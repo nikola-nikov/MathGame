@@ -1,0 +1,13 @@
+{
+  "name": "smetni-math-game",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Математическа игра на български за първи клас",
+  "scripts": {
+    "start": "node server.cjs",
+    "test": "node --test tests/math.test.cjs tests/ui.test.cjs tests/campaign.test.cjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

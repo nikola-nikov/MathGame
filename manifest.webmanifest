@@ -1,0 +1,11 @@
+{
+  "name": "Сметни! — Математическо приключение",
+  "short_name": "Сметни!",
+  "lang": "bg",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f7f5ef",
+  "theme_color": "#6c4ce4",
+  "icons": [{ "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}
