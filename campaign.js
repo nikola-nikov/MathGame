@@ -1,7 +1,6 @@
 (function (root) {
   "use strict";
   const math = typeof module !== "undefined" && module.exports ? require("./math.js") : root.MathGame;
-  const PASS_COUNT = 7;
   const limits = [5, 7, 8, 8, 10, 10, 12, 15, 18, 20, 20, 25, 30, 40, 50, 60, 70, 80, 90, 100];
   const subtractionCounts = [0, 2, 4, 5, 3, 5, 4, 5, 5, 5, 7, 5, 6, 5, 6, 5, 6, 5, 6, 5];
   const LEVELS = limits.map((max, i) => Object.freeze({ id: i + 1, max, subtractionCount: subtractionCounts[i] }));
@@ -48,10 +47,9 @@
   function recordLevel(progress, session) {
     if (!session.levelId || session.answers.length !== 10 || session.finishedAt === null) return progress;
     const id = session.levelId;
-    const results = math.getResults(session);
     const points = math.getScore(session).points;
     const previous = progress[id];
-    return { ...progress, [id]: { passed: previous?.passed === true || results.correct >= PASS_COUNT, points: Math.max(previous?.points || 0, points) } };
+    return { ...progress, [id]: { passed: true, points: Math.max(previous?.points || 0, points) } };
   }
 
   function readProgress(raw) {
@@ -60,7 +58,7 @@
     for (const level of LEVELS) {
       const entry = raw[level.id];
       if (entry && typeof entry.passed === "boolean" && Number.isInteger(entry.points) && entry.points >= 0 && entry.points <= 100) {
-        result[level.id] = { passed: entry.passed, points: entry.points };
+        result[level.id] = { passed: true, points: entry.points };
       }
     }
     // Only a contiguous chain can unlock later levels, even with damaged stored data.
@@ -75,12 +73,12 @@
     for (const record of records) {
       if (record.levelId > unlockedLevel(progress)) continue;
       const previous = progress[record.levelId];
-      progress[record.levelId] = { passed: previous?.passed === true || record.correct >= PASS_COUNT, points: Math.max(previous?.points || 0, record.points) };
+      progress[record.levelId] = { passed: true, points: Math.max(previous?.points || 0, record.points) };
     }
     return progress;
   }
 
-  const api = Object.freeze({ LEVELS: Object.freeze(LEVELS), PASS_COUNT, unlockedLevel, createLevelSession, recordLevel, readProgress, recoverProgress });
+  const api = Object.freeze({ LEVELS: Object.freeze(LEVELS), unlockedLevel, createLevelSession, recordLevel, readProgress, recoverProgress });
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.Campaign = api;
 })(typeof globalThis !== "undefined" ? globalThis : this);

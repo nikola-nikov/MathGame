@@ -69,3 +69,14 @@ test("a lion result includes a decorative confetti celebration",()=>{
  assert.equal((ui.card.innerHTML.match(/--drift:/g)||[]).length,42);
  assert.ok(ui.card.innerHTML.includes('Твоята награда: Лъв'));
 });
+
+
+test("low-scoring level completion survives the results-to-home route and reload",()=>{
+ const ui=boot(false,{level:true});
+ for(let i=0;i<10;i++){const correct=ui.correctAnswer();const wrong=ui.buttons().find(b=>Number(b.dataset.answer)!==correct);ui.answer(Number(wrong.dataset.answer));ui.next();}
+ assert.ok(ui.card.innerHTML.includes("Следващото ниво е отключено."));
+ ui.get("#change-settings").listeners.click();
+ assert.match(ui.card.innerHTML,/class="level-animal" src="assets\/turtle.svg"/);
+ assert.ok(!ui.card.innerHTML.match(/<button[^>]+data-level="2"[^>]*>/)[0].includes("disabled"));
+ const reload=boot(false,{level:true,storage:ui.storage});assert.ok(reload.card.innerHTML.includes("Ниво 2"));
+});
