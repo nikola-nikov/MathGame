@@ -62,7 +62,15 @@
         }
       }
     }
-    return { ...session, levelId: id, questions: shuffled(questions, random) };
+    const finalQuestions = shuffled(questions, random).map(question => {
+      if (id < 20) return question;
+      const intermediate = question.answer;
+      const secondOperation = question.operation === "+" ? "-" : "+";
+      const limit = secondOperation === "-" ? intermediate : level.max - intermediate;
+      const third = limit > 0 ? 1 + Math.floor(random() * limit) : 0;
+      return { ...question, intermediate, third, secondOperation, answer: secondOperation === "+" ? intermediate + third : intermediate - third };
+    });
+    return { ...session, levelId: id, questions: finalQuestions };
   }
 
   function recordLevel(progress, session) {

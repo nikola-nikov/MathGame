@@ -6,12 +6,12 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#edf3e8">
     <meta name="description" content="Малка математическа игра за първи клас. Упражнявай събиране и изваждане с 10 забавни задачи.">
-    <title>Математическа джунгла — Сметни!</title>
+    <title>Смятане с животни</title>
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=20261108-sounds-summary">
-    <script src="math.js?v=20261108-sounds-summary" defer></script>
-    <script src="campaign.js?v=20261108-sounds-summary" defer></script>
-    <script src="app.js?v=20261108-sounds-summary" defer></script>
+    <link rel="stylesheet" href="styles.css?v=20261108-players">
+    <script src="math.js?v=20261108-players" defer></script>
+    <script src="campaign.js?v=20261108-players" defer></script>
+    <script src="app.js?v=20261108-players" defer></script>
   </head>
   <body>
     <svg class="icon-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -25,15 +25,21 @@
 
     <div class="site-shell">
       <header class="site-header">
-        <a class="brand" href="#" aria-label="Сметни! — начало">
-          <span class="brand-mark" aria-hidden="true">✳</span>
-          <span>сметни<span class="brand-punctuation">!</span></span>
-        </a>
-        <div class="header-actions"><button type="button" id="reset-button" class="utility-button">Нулирай</button><button type="button" id="home-button" class="utility-button">Начало</button><button type="button" id="fullscreen-button" class="utility-button" aria-label="Цял екран" title="Цял екран">⛶ Цял екран</button></div>
+        <a class="brand" href="#" aria-label="Смятане с животни — начало"><span class="brand-mark" aria-hidden="true">✳</span><span>Смятане с животни</span></a>
+        <div class="player-header"><span class="player-caption">ИГРАЧ</span><strong id="player-name">Избери играч</strong></div>
+        <details class="game-menu" id="game-menu"><summary aria-label="Отвори менюто">☰</summary><div class="menu-panel">
+          <button type="button" id="home-button">Начало</button>
+          <button type="button" id="switch-player">Смени потребител</button>
+          <button type="button" id="new-player">Нов потребител</button>
+          <button type="button" id="menu-rankings">Класация</button>
+          <button type="button" id="menu-sound" aria-pressed="true">Звук: вкл.</button>
+          <button type="button" id="fullscreen-button">Цял екран</button>
+          <button type="button" id="reset-button">Нулирай моята игра</button>
+        </div></details>
       </header>
 
       <main>
-        <div class="page-heading jungle-heading"><h1 class="visually-hidden">Математическа джунгла</h1><div class="animal-parade" id="jungle-animals" role="group" aria-label="Натисни животно за изненада"><button class="animal-button animal-lion" type="button" data-animal="lion" aria-label="Лъв — забавна изненада"><img src="assets/lion.svg" alt="" width="64" height="56"></button><button class="animal-button animal-elephant" type="button" data-animal="elephant" aria-label="Слон — забавна изненада"><img src="assets/elephant.svg" alt="" width="64" height="56"></button><button class="animal-button animal-dolphin" type="button" data-animal="dolphin" aria-label="Делфин — забавна изненада"><img src="assets/dolphin.svg" alt="" width="64" height="56"></button><button class="animal-button animal-fox" type="button" data-animal="fox" aria-label="Лисица — забавна изненада"><img src="assets/fox.svg" alt="" width="64" height="56"></button><button class="animal-button animal-rabbit" type="button" data-animal="rabbit" aria-label="Зайче — забавна изненада"><img src="assets/rabbit.svg" alt="" width="64" height="56"></button><button class="animal-button animal-turtle" type="button" data-animal="turtle" aria-label="Костенурка — забавна изненада"><img src="assets/turtle.svg" alt="" width="64" height="56"></button></div><p id="animal-joke" class="animal-joke" role="status" aria-live="polite"></p></div>
+        <div class="page-heading jungle-heading"><h1 class="visually-hidden">Смятане с животни</h1><div class="animal-parade" id="jungle-animals" role="group" aria-label="Натисни животно за изненада"><button class="animal-button animal-lion" type="button" data-animal="lion" aria-label="Лъв — забавна изненада"><img src="assets/lion.svg" alt="" width="64" height="56"></button><button class="animal-button animal-elephant" type="button" data-animal="elephant" aria-label="Слон — забавна изненада"><img src="assets/elephant.svg" alt="" width="64" height="56"></button><button class="animal-button animal-dolphin" type="button" data-animal="dolphin" aria-label="Делфин — забавна изненада"><img src="assets/dolphin.svg" alt="" width="64" height="56"></button><button class="animal-button animal-fox" type="button" data-animal="fox" aria-label="Лисица — забавна изненада"><img src="assets/fox.svg" alt="" width="64" height="56"></button><button class="animal-button animal-rabbit" type="button" data-animal="rabbit" aria-label="Зайче — забавна изненада"><img src="assets/rabbit.svg" alt="" width="64" height="56"></button><button class="animal-button animal-turtle" type="button" data-animal="turtle" aria-label="Костенурка — забавна изненада"><img src="assets/turtle.svg" alt="" width="64" height="56"></button></div><p id="animal-joke" class="animal-joke" role="status" aria-live="polite"></p></div>
 
         <div class="home-controls" id="home-controls"><div class="mode-switch" role="group" aria-label="Режим на игра"><button type="button" id="mode-levels" aria-pressed="true">Нива</button><button type="button" id="mode-custom" aria-pressed="false">По избор</button></div></div>
         <p id="screen-hint" class="screen-hint" role="status" hidden></p>
@@ -79,6 +85,7 @@
 
       <footer class="site-footer"><span>Създадено за любопитни деца.</span><span>Малко по-добри с всяка задача <span class="footer-spark" aria-hidden="true">✳</span></span></footer>
     </div>
+    <dialog id="player-dialog" aria-labelledby="player-dialog-title"><form id="player-form"><h2 id="player-dialog-title">Кой ще играе?</h2><label for="player-select">Запазен потребител</label><select id="player-select"><option value="">Нов потребител</option></select><label for="player-input">Твоето име</label><input id="player-input" type="text" maxlength="24" autocomplete="off" required><p id="player-error" role="alert" hidden></p><div class="player-dialog-actions"><button class="primary-button" type="submit">Продължи</button><button class="secondary-button" id="player-cancel" type="button">Отказ</button></div></form></dialog>
     <noscript><p class="noscript-message">За играта е необходимо да включите JavaScript в браузъра.</p></noscript>
   </body>
 </html>

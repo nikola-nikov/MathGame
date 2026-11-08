@@ -136,10 +136,10 @@ test("correct answers contribute 90 points and the total stopwatch contributes u
   assert.equal(getScore(make(10,20)).points,100);
   assert.equal(getScore(make(10,60)).points,90);
   assert.equal(getScore(make(9,60)).points,81);
-  assert.equal(getScore(make(8,45)).points,77);
+  assert.equal(getScore(make(8,45)).points,76);
   assert.equal(getScore(make(0,60)).points,0);
   assert.equal(getScore(make(0,20)).points,10);
-  for(const [seconds,bonus] of [[0,10],[29,10],[30,10],[32,10],[32.999,10],[33,9],[35,9],[36,8],[39,7],[42,6],[45,5],[48,4],[51,3],[54,2],[57,1],[59.999,1],[60,0],[61,0],[120,0]]) {
+  for(const [seconds,bonus] of [[0,10],[19,10],[20,10],[23.999,10],[24,9],[28,8],[29,8],[32,7],[36,6],[40,5],[44,4],[48,3],[52,2],[56,1],[59.999,1],[60,0],[61,0],[120,0]]) {
     const score=getScore(make(10,seconds));assert.equal(score.accuracy,90);assert.equal(score.speed,bonus,"seconds: "+seconds);assert.equal(score.points,90+bonus);
   }
   assert.equal(getScore(make(10,20)).reward.file,"lion");
@@ -152,7 +152,7 @@ test("correct answers contribute 90 points and the total stopwatch contributes u
 test("speed bonus uses the full frozen stopwatch, including automatic feedback pauses",()=>{
  const {getScore}=require("../math.js");
  const s={startedAt:0,finishedAt:45000,answers:Array.from({length:10},()=>({correct:true,durationMs:1000}))};
- assert.equal(getScore(s).speed,5);assert.equal(getScore(s).points,95);
+ assert.equal(getScore(s).speed,4);assert.equal(getScore(s).points,94);
  const partial={...s,finishedAt:null,answers:s.answers.slice(0,5)};
  assert.equal(getScore(partial).speed,0);assert.equal(getScore(partial).accuracy,45);
 });

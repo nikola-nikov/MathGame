@@ -9,7 +9,7 @@ test("20 levels follow the requested introduction and bounded results",()=>{
  for(const level of LEVELS){
   const s=createLevelSession(level.id,progress);
   assert.equal(s.questions.length,10);assert.equal(s.questions.filter(q=>q.operation==="-").length,level.subtractionCount);
-  const keys=new Set();for(const q of s.questions){assert.ok(q.left>=0&&q.left<=level.max);assert.ok(q.right>=0&&q.right<=level.max);assert.ok(q.answer>=0&&q.answer<=level.max);assert.equal(q.answer,q.operation==="+"?q.left+q.right:q.left-q.right);keys.add([q.operation,q.left,q.right].join(","));}assert.equal(keys.size,10);
+  const keys=new Set();for(const q of s.questions){assert.ok(q.left>=0&&q.left<=level.max);assert.ok(q.right>=0&&q.right<=level.max);assert.ok(q.answer>=0&&q.answer<=level.max);const intermediate=q.operation==="+"?q.left+q.right:q.left-q.right;assert.equal(q.answer,Number.isInteger(q.third)?(q.secondOperation==="+"?intermediate+q.third:intermediate-q.third):intermediate);keys.add([q.operation,q.left,q.right].join(","));}assert.equal(keys.size,10);
   progress=recordLevel(progress,finished(level.id,progress));
  }
  assert.equal(unlockedLevel(progress),21);assert.equal(Object.values(progress).filter(r=>r.passed).length,20);
@@ -67,4 +67,13 @@ test("level 20 is evenly mixed up to 12, with a slow increase and unlimited gene
  const p=Object.fromEntries(Object.entries(progress).slice(0,20));
  const r=recoverProgress(p,[{levelId:21,points:100,correct:10}]);assert.equal(unlockedLevel(r),22);
  assert.equal(createLevelSession(20,progress).questions.filter(q=>q.operation==="-").length,5);
+});
+
+
+test("level 20 and later use three terms with bounded nonnegative intermediate values",()=>{
+ const progress={};for(let i=1;i<50;i++)progress[i]={passed:true,points:90};
+ assert.ok(createLevelSession(19,progress).questions.every(q=>q.third===undefined));
+ for(const id of [20,21,40])for(const random of [Math.random,()=>0,()=>0.999]){
+  const s=createLevelSession(id,progress,0,random);for(const q of s.questions){assert.ok(Number.isInteger(q.third));assert.ok(q.third>=0&&q.third<=s.settings.max);assert.ok(q.intermediate>=0&&q.intermediate<=s.settings.max);assert.ok(q.answer>=0&&q.answer<=s.settings.max);assert.equal(q.answer,q.secondOperation==="+"?q.intermediate+q.third:q.intermediate-q.third);}
+ }
 });

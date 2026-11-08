@@ -35,7 +35,69 @@
   progress = recoverProgress(progress, rankings);
   selectedLevel = unlockedLevel(progress);
 
+
+  const playersKey = "smetni.players.v1";
+  const playerData = readStorage(playersKey, {});
+  const normalizeRankings = value => Array.isArray(value) ? value.filter(r => r && Number.isInteger(r.points) && r.points >= 0 && r.points <= 100 && Number.isInteger(r.correct) && r.correct >= 0 && r.correct <= 10 && Number.isInteger(r.seconds) && r.seconds >= 0 && ["+", "-", "mixed"].includes(r.operation) && (r.levelId === null || Number.isSafeInteger(r.levelId) && r.levelId >= 1)).slice(0,50) : [];
+  let players = [];
+  for (const item of Array.isArray(playerData?.players) ? playerData.players : []) {
+    if (!item || typeof item.id !== "string" || !/^[a-zA-Z0-9_-]{1,80}$/.test(item.id) || typeof item.name !== "string" || !item.name.trim() || players.some(p=>p.id===item.id)) continue;
+    let settings; try { settings = validateSettings(item.settings); } catch { settings = {min:0,max:10,operation:"+"}; }
+    players.push({id:item.id,name:item.name.trim().slice(0,24),progress:readProgress(item.progress),rankings:normalizeRankings(item.rankings),settings});
+  }
+  let activePlayerId = players.some(p=>p.id===playerData?.activeId) ? playerData.activeId : null;
+  let pendingPlayerAction = null;
+  const escapeHtml = value => String(value).replace(/[&<>"']/g, ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+  function activePlayer() { return players.find(p=>p.id===activePlayerId); }
+  function persistPlayers() {
+    try { localStorage.setItem(playersKey,JSON.stringify({activeId:activePlayerId,players})); }
+    catch { storageAvailable=false; }
+  }
+  function syncPlayerHeader() { document.querySelector("#player-name").textContent=activePlayer()?.name || "Избери играч"; document.querySelector("#player-name").title=activePlayer()?.name || "Избери играч"; }
+  function loadPlayer(player) {
+    rankings=normalizeRankings(player.rankings);progress=recoverProgress(player.progress,rankings);selectedLevel=unlockedLevel(progress);
+    settingsForm.elements.min.value=player.settings.min;settingsForm.elements.max.value=player.settings.max;settingsForm.elements.operation.value=player.settings.operation;
+    syncPlayerHeader();
+  }
+  function openPlayerDialog(action=null, newOnly=false) {
+    if (session?.finishedAt===null && (phase==="question" || phase==="feedback") && !window.confirm("Да прекратим текущата игра и да сменим потребителя?")) return;
+    recordFinishedSession();stopTimer();cancelFeedback();stopJungleSound();session=null;
+    if (activePlayer()) saveProgress();
+    renderWelcome();pendingPlayerAction=action;
+    const select=document.querySelector("#player-select");
+    select.innerHTML='<option value="">Нов потребител</option>'+players.map(p=>'<option value="'+p.id+'">'+escapeHtml(p.name)+'</option>').join("");
+    select.value=newOnly ? "" : activePlayerId || "";
+    const input=document.querySelector("#player-input");input.value="";input.disabled=!!select.value;
+    document.querySelector("#player-error").hidden=true;
+    document.querySelector("#player-dialog").showModal();
+    (select.value ? select : input).focus();
+  }
+  document.querySelector("#player-select").addEventListener("change",()=>{
+    const select=document.querySelector("#player-select");const input=document.querySelector("#player-input");input.disabled=!!select.value;if(!select.value)input.focus();
+  });
+  document.querySelector("#player-form").addEventListener("submit",event=>{
+    event.preventDefault();const select=document.querySelector("#player-select"), input=document.querySelector("#player-input");
+    let player=players.find(p=>p.id===select.value);
+    if(!player){
+      const name=input.value.trim().replace(/\s+/g," ").slice(0,24);
+      if(!name){document.querySelector("#player-error").textContent="Напиши името си.";document.querySelector("#player-error").hidden=false;input.focus();return;}
+      player=players.find(p=>p.name.toLocaleLowerCase("bg")===name.toLocaleLowerCase("bg"));
+      if(!player){
+        const first=players.length===0;
+        let settings={min:0,max:10,operation:"+"};if(first){try{settings=readSettings();}catch{}}
+        player={id:"p"+Date.now().toString(36)+Math.random().toString(36).slice(2,9),name,progress:first?progress:{},rankings:first?rankings:[],settings};players.push(player);
+      }
+    }
+    activePlayerId=player.id;homeMode="levels";loadPlayer(player);persistPlayers();
+    document.querySelector("#player-dialog").close();const action=pendingPlayerAction;pendingPlayerAction=null;renderWelcome(true);if(action)action();
+  });
+  document.querySelector("#player-cancel").addEventListener("click",()=>{pendingPlayerAction=null;document.querySelector("#player-dialog").close();});
+  document.querySelector("#player-dialog").addEventListener("cancel",()=>{pendingPlayerAction=null;});
+  if(activePlayer())loadPlayer(activePlayer());else syncPlayerHeader();
+
   function saveProgress() {
+    const player=activePlayer();
+    if(player){player.progress=progress;player.rankings=rankings;persistPlayers();}
     try { localStorage.setItem("smetni.progress.v1", JSON.stringify(progress)); localStorage.setItem("smetni.rankings.v1", JSON.stringify(rankings)); }
     catch { storageAvailable = false; }
   }
@@ -67,7 +129,8 @@
   const icon = (name) => `<svg class="icon" aria-hidden="true"><use href="#icon-${name}"/></svg>`;
   const operationLabel = (operation) => operation === "mixed" ? "Събиране и изваждане" : operation === "+" ? "Събиране" : "Изваждане";
   const operationSymbol = (operation) => operation === "+" ? "+" : "−";
-  const equationText = (question) => `${question.left} ${operationSymbol(question.operation)} ${question.right} = ${question.answer}`;
+  const expressionText = question => `${question.left} ${operationSymbol(question.operation)} ${question.right}${Number.isInteger(question.third) ? " " + operationSymbol(question.secondOperation) + " " + question.third : ""}`;
+  const equationText = question => `${expressionText(question)} = ${question.answer}`;
   const clockText = (results) => `${String(results.minutes).padStart(2, "0")}:${String(results.seconds).padStart(2, "0")}`;
   const timeText = (results) => `${results.minutes} мин ${String(results.seconds).padStart(2, "0")} сек`;
 
@@ -101,7 +164,7 @@ function renderWelcome(focus = false, awardedLevel = null) {
  phase='welcome';stopTimer();cancelFeedback();setLocked(false);homeControls.hidden=false;settingsPanel.hidden=homeMode!=='custom';
  document.querySelector('#mode-levels').setAttribute('aria-pressed',String(homeMode==='levels'));document.querySelector('#mode-custom').setAttribute('aria-pressed',String(homeMode==='custom'));
  const next=unlockedLevel(progress), completed=Object.values(progress).filter(record=>record.passed).length;if(selectedLevel>next)selectedLevel=next;const level=getLevel(selectedLevel);
- card.innerHTML=`<div class="home-body"><div class="home-intro"><div><p class="eyebrow">${homeMode==='levels'?completed+' ПРЕМИНАТИ НИВА':'ТИ ИЗБИРАШ ЗАДАЧИТЕ'}</p><h2>${homeMode==='levels'?'Една стъпка по-нагоре!':'Да потренираме!'}</h2></div><img src="assets/lion.svg" alt="" width="82" height="72"></div><div class="home-actions"><button class="primary-button" type="button" id="start-button">Играя</button><button class="secondary-button" type="button" id="rankings-button" aria-label="Класация" title="Класация"><img src="assets/podium.svg" alt="" width="92" height="48"></button></div>${homeMode==='levels'?`<p class="level-summary">Ниво ${level.id} · резултати до ${level.max} · ${10-level.subtractionCount} събирания и ${level.subtractionCount} изваждания</p><div class="levels-grid" role="group" aria-label="Избери ниво">${visibleLevels(progress).map(item=>{const record=progress[item.id],locked=item.id>next,reward=record?REWARDS.find(r=>record.points>=r.min):null;return `<button type="button" class="level-tile${item.id === awardedLevel ? " reward-arrival" : ""} ${record?.passed?'level-passed':''} ${item.id===selectedLevel?'level-selected':''}" data-level="${item.id}" aria-pressed="${item.id===selectedLevel}" aria-label="Ниво ${item.id}, ${locked?'заключено':record?.passed?'преминато, '+record.points+' точки, '+reward.name:'достъпно'}" ${locked?'disabled':''}><strong>${item.id}</strong>${record?.passed?`<img class="level-animal" src="assets/${reward.file}.svg" alt="Най-добро животно: ${reward.name}" title="${reward.name} · ${record.points} точки" width="44" height="38">`:`<span class="level-state">${locked?'🔒':'Играй'}</span>`}</button>`;}).join('')}</div><p class="home-help">Завърши 10-те задачи, за да отключиш следващото ниво. Зелените нива могат да се играят отново за по-добро животно.</p>`:'<p class="home-help">10 задачи според твоите настройки. Избери числата и операциите по-горе.</p>'}<p class="storage-note">${storageAvailable?'Напредъкът и класацията се пазят на това устройство.':'Запазването е недостъпно. Напредъкът остава само до затваряне на страницата.'}</p></div>`;
+ card.innerHTML=`<div class="home-body"><div class="home-actions"><button class="primary-button" type="button" id="start-button">Играя</button><button class="secondary-button" type="button" id="rankings-button" aria-label="Класация" title="Класация"><img src="assets/podium.svg" alt="" width="92" height="48"></button></div>${homeMode==='levels'?`<div class="levels-grid" role="group" aria-label="Избери ниво">${visibleLevels(progress).map(item=>{const record=progress[item.id],locked=item.id>next,reward=record?REWARDS.find(r=>record.points>=r.min):null;return `<button type="button" class="level-tile${item.id === awardedLevel ? " reward-arrival" : ""} ${record?.passed?'level-passed':''} ${item.id===selectedLevel?'level-selected':''}" data-level="${item.id}" aria-pressed="${item.id===selectedLevel}" aria-label="Ниво ${item.id}, ${locked?'заключено':record?.passed?'преминато, '+record.points+' точки, '+reward.name:'достъпно'}" ${locked?'disabled':''}><strong>${item.id}</strong>${record?.passed?`<img class="level-animal" src="assets/${reward.file}.svg" alt="Най-добро животно: ${reward.name}" title="${reward.name} · ${record.points} точки" width="44" height="38">`:`<span class="level-state">${locked?'🔒':'Играй'}</span>`}</button>`;}).join('')}</div>`:'<p class="home-help">10 задачи според твоите настройки. Избери числата и операциите по-горе.</p>'}<p class="storage-note">${storageAvailable?'Напредъкът и класацията се пазят на това устройство.':'Запазването е недостъпно. Напредъкът остава само до затваряне на страницата.'}</p></div>`;
  card.querySelector('#start-button').addEventListener('click',()=>{if(homeMode==='levels')startSession(null,selectedLevel);else settingsForm.requestSubmit();});
  card.querySelector('#rankings-button').addEventListener('click',renderRankings);
  card.querySelectorAll('[data-level]').forEach(button=>button.addEventListener('click',()=>{const id=Number(button.dataset.level);if(id>unlockedLevel(progress))return;selectedLevel=id;renderWelcome();card.querySelector('[data-level="'+id+'"]').focus();}));
@@ -117,7 +180,7 @@ function renderRankings(){document.body.dataset.screen='rankings';phase='ranking
   }
 
   function gameTop(index) {
-    return `<div class="game-top quiz-top"><span class="game-badge">${session.levelId ? "Ниво " + session.levelId + " · " : ""}${index + 1} / ${QUESTION_COUNT}</span><div class="timer-display"><span class="timer-caption">ВРЕМЕ</span><span id="timer" role="timer" aria-label="Изминало време">${clockText(getResults(session))}</span></div><button class="sound-toggle" type="button" data-sound-toggle aria-pressed="${soundEnabled}" aria-label="${soundEnabled ? "Изключи звука" : "Включи звука"}">${soundEnabled ? "Звук: вкл." : "Звук: изкл."}</button></div>${progressMarkup(index)}`;
+    return `<div class="game-top quiz-top"><span class="game-badge">${session.levelId ? "Ниво " + session.levelId + " · " : ""}${index + 1} / ${QUESTION_COUNT}</span><div class="timer-display"><span class="timer-caption">ВРЕМЕ</span><span id="timer" role="timer" aria-label="Изминало време">${clockText(getResults(session))}</span></div></div>${progressMarkup(index)}`;
   }
 
   function renderQuestion() {
@@ -128,8 +191,8 @@ function renderRankings(){document.body.dataset.screen='rankings';phase='ranking
     session.questionStartedAt = Date.now();
     card.innerHTML = `${gameTop(index)}
       <div class="question-body">
-        <p class="question-prompt">${operationLabel(question.operation)} · Колко се получава?</p>
-        <h2 class="equation" id="question-equation"><span>${question.left}</span><span class="operator">${operationSymbol(question.operation)}</span><span>${question.right}</span><span class="operator">=</span><span class="question-mark">?</span></h2>
+        <p class="question-prompt">${operationLabel(Number.isInteger(question.third) ? "mixed" : question.operation)} · Колко се получава?</p>
+        <h2 class="equation ${Number.isInteger(question.third) ? "three-number-equation" : ""}" id="question-equation"><span>${question.left}</span><span class="operator">${operationSymbol(question.operation)}</span><span>${question.right}</span>${Number.isInteger(question.third) ? `<span class="operator">${operationSymbol(question.secondOperation)}</span><span>${question.third}</span>` : ""}<span class="operator">=</span><span class="question-mark">?</span></h2>
         <p class="choice-prompt" id="choice-label">Избери верния отговор</p>
         <div class="answer-choices" role="group" aria-labelledby="question-equation choice-label">${generateChoices(question).map((value, i) => `<button class="answer-choice" type="button" data-answer="${value}"><span class="choice-number" aria-hidden="true">${i + 1}</span>${value}</button>`).join("")}</div>
         <p class="answer-status" id="answer-status" role="status" aria-live="polite" aria-atomic="true"></p>
@@ -308,6 +371,7 @@ function renderRankings(){document.body.dataset.screen='rankings';phase='ranking
   }
 
   function startSession(settings, levelId = null) {
+    if(!activePlayer()){openPlayerDialog(()=>startSession(settings,levelId ? Math.min(levelId,unlockedLevel(progress)) : null),true);return;}
     if (resultTimeout !== null) window.clearTimeout(resultTimeout);
     resultTimeout = null;
     stopTimer();
@@ -315,6 +379,7 @@ function renderRankings(){document.body.dataset.screen='rankings';phase='ranking
     feedbackTimeout = null;
     card.classList.remove("flash-correct", "flash-incorrect");
     session = levelId ? createLevelSession(levelId, progress) : createSession(settings);
+    homeMode=levelId ? "levels" : "custom";
     homeControls.hidden = true;
     settingsPanel.hidden = true;
     playJungleSound();
@@ -323,6 +388,7 @@ function renderRankings(){document.body.dataset.screen='rankings';phase='ranking
     setLocked(true);
     settingsError.hidden = true;
     try { if (!levelId) localStorage.setItem(storageKey, JSON.stringify(settings)); } catch { /* Storage is optional. */ }
+    if(!levelId){activePlayer().settings=settings;persistPlayers();}
     renderQuestion();
     timerId = window.setInterval(() => {
       const timer = document.querySelector("#timer");
@@ -355,7 +421,7 @@ function renderRankings(){document.body.dataset.screen='rankings';phase='ranking
   });
 
   document.querySelector("#reset-button").addEventListener("click", () => {
-    if (!window.confirm("Да започнем ли отначало? Всички преминати нива, спечелени животни, класацията и настройките ще бъдат изтрити на това устройство.")) return;
+    if (!window.confirm("Да започнем ли отначало? Нивата, животните, класацията и настройките само на текущия потребител ще бъдат изтрити.")) return;
     stopTimer();
     cancelFeedback();
     stopJungleSound();
@@ -378,6 +444,7 @@ function renderRankings(){document.body.dataset.screen='rankings';phase='ranking
       try { localStorage.removeItem(key); } catch { failed = true; }
     }
     storageAvailable = !failed;
+    if(activePlayer()){activePlayer().settings={min:0,max:10,operation:"+"};activePlayer().progress=progress;activePlayer().rankings=rankings;persistPlayers();}
     renderWelcome(true);
     if (failed) window.alert("Играта е нулирана за тази сесия, но браузърът не разрешава изтриване на запазените данни. При презареждане старият напредък може да се върне.");
   });
@@ -420,6 +487,16 @@ function renderRankings(){document.body.dataset.screen='rankings';phase='ranking
     playJungleSound(button.dataset.animal);
     animalTimeout = window.setTimeout(() => { button.classList.remove("animal-dancing"); dancingAnimal = null; animalTimeout = null; }, 1400);
   });
-  restoreSettings();
+  document.querySelector("#switch-player").addEventListener("click",()=>openPlayerDialog());
+  document.querySelector("#new-player").addEventListener("click",()=>openPlayerDialog(null,true));
+  document.querySelector("#menu-rankings").addEventListener("click",()=>{
+    if(session?.finishedAt===null && (phase==="question" || phase==="feedback") && !window.confirm("Да прекратим играта и да отворим класацията?"))return;
+    recordFinishedSession();stopTimer();cancelFeedback();document.body.classList.remove("is-playing");renderRankings();
+  });
+  document.querySelector("#game-menu").addEventListener("click",event=>{if(event.target.closest("button"))document.querySelector("#game-menu").open=false;});
+  document.querySelector("#menu-sound").addEventListener("click",()=>{
+    soundEnabled=!soundEnabled;if(!soundEnabled)stopJungleSound();const button=document.querySelector("#menu-sound");button.setAttribute("aria-pressed",String(soundEnabled));button.textContent=soundEnabled?"Звук: вкл.":"Звук: изкл.";
+  });
+  if(!activePlayer())restoreSettings();
   renderWelcome();
 })();

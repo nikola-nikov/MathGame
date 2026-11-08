@@ -113,7 +113,7 @@
     const accuracy = Math.min(QUESTION_COUNT, results.correct) * 9;
     const complete = session.answers.length === QUESTION_COUNT && session.finishedAt !== null;
     // Award one time point per remaining three-second band; use the displayed stopwatch.
-    const speed = complete ? Math.max(0, Math.min(10, 10 - Math.floor(Math.max(0, results.elapsedSeconds - 30) / 3))) : 0;
+    const speed = complete ? Math.max(0, Math.min(10, 10 - Math.floor(Math.max(0, results.elapsedSeconds - 20) / 4))) : 0;
     const points = Math.max(0, Math.min(100, accuracy + speed));
     return { points, accuracy, speed, reward: REWARDS.find(reward => points >= reward.min) };
   }

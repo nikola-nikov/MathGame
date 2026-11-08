@@ -6,8 +6,9 @@ const vm=require("node:vm");
 const math=require("../math.js");
 function boot(withAudio=false, options={}){
   const storage=options.storage || new Map();let current=null;let timeoutId=0;
+  if(!options.noProfile&&!storage.has("smetni.players.v1"))storage.set("smetni.players.v1",JSON.stringify({activeId:"test",players:[{id:"test",name:"Тест",progress:JSON.parse(storage.get("smetni.progress.v1")||"{}"),rankings:JSON.parse(storage.get("smetni.rankings.v1")||"[]"),settings:{min:0,max:10,operation:"+"}}]}));
   const nodes=new Map(), timers=[], tones=[], stops=[], submissions=[], confirmations=[], alerts=[];
-  function element(){const classes=new Set();return {listeners:{},dataset:{},attributes:{},textContent:"",disabled:false,classList:{add:(...v)=>v.forEach(x=>classes.add(x)),remove:(...v)=>v.forEach(x=>classes.delete(x)),toggle:(v,on)=>on?classes.add(v):classes.delete(v),contains:v=>classes.has(v)},addEventListener(type,fn){this.listeners[type]=fn;},setAttribute(k,v){this.attributes[k]=v;},insertAdjacentHTML(){},focus(){},scrollIntoView(){},prepend(){}};}
+  function element(){const classes=new Set();return {listeners:{},dataset:{},attributes:{},textContent:"",disabled:false,classList:{add:(...v)=>v.forEach(x=>classes.add(x)),remove:(...v)=>v.forEach(x=>classes.delete(x)),toggle:(v,on)=>on?classes.add(v):classes.delete(v),contains:v=>classes.has(v)},addEventListener(type,fn){this.listeners[type]=fn;},setAttribute(k,v){this.attributes[k]=v;},insertAdjacentHTML(){},focus(){},scrollIntoView(){},prepend(){},showModal(){this.open=true;},close(){this.open=false;}};}
   const get=key=>{if(!nodes.has(key))nodes.set(key,element());return nodes.get(key);};
   const card=get("#game-card");let html="",buttons=[],steps=[];
   Object.defineProperty(card,"innerHTML",{get:()=>html,set:value=>{html=value;buttons=[...value.matchAll(/data-answer="(\d+)"/g)].map(m=>{const b=element();b.dataset.answer=m[1];return b;});steps=Array.from({length:10},element);for(const key of ["#answer-status",".question-mark",".progress-track"])nodes.set(key,element());}});
@@ -58,7 +59,7 @@ test("level completion is saved on answer 10 before feedback ends, home unlocks 
  const saved=JSON.parse(ui.storage.get("smetni.progress.v1"));assert.equal(saved[1].passed,true);assert.ok(saved[1].points>=95);
  assert.equal(JSON.parse(ui.storage.get("smetni.rankings.v1")).length,1);
  ui.get("#home-button").listeners.click();
- assert.ok(ui.card.innerHTML.includes('1 ПРЕМИНАТИ НИВА'));
+
  assert.match(ui.card.innerHTML,/class="level-tile level-passed[^>]+data-level="1"/);
  assert.match(ui.card.innerHTML,/class="level-animal" src="assets\/lion.svg"/);
  const level2=ui.card.innerHTML.match(/<button[^>]+data-level="2"[^>]*>/)[0];assert.ok(!level2.includes("disabled"));
@@ -155,7 +156,7 @@ test("confirmed reset clears only game data, cancels transitions and returns to 
  assert.equal(ui.timers.length,1);ui.get('#reset-button').listeners.click();
  assert.equal(ui.timers.length,0);assert.equal(storage.get('unrelated-key'),'keep');
  for(const key of ['smetni.progress.v1','smetni.rankings.v1','smetni.settings.v1'])assert.ok(!storage.has(key));
- assert.ok(ui.card.innerHTML.includes('0 ПРЕМИНАТИ НИВА'));assert.ok(!ui.card.innerHTML.includes('level-passed'));
+ assert.ok(!ui.card.innerHTML.includes('level-passed'));assert.ok(!ui.card.innerHTML.includes('level-passed'));
  assert.ok(ui.card.innerHTML.match(/<button[^>]+data-level="2"[^>]*>/)[0].includes('disabled'));
  assert.equal(ui.get('#settings-form').elements.max.value,10);
  assert.match(ui.card.innerHTML,/id="start-button">Играя<\/button>/);
@@ -164,16 +165,16 @@ test("confirmed reset clears only game data, cancels transitions and returns to 
 test("failed storage deletion is explained without preventing a fresh in-memory game",()=>{
  const ui=boot(false,{level:true,failReset:true});ui.get('#reset-button').listeners.click();
  assert.equal(ui.alerts.length,1);assert.ok(ui.alerts[0].includes('При презареждане'));
- assert.ok(ui.card.innerHTML.includes('0 ПРЕМИНАТИ НИВА'));
+ assert.ok(!ui.card.innerHTML.includes('level-passed'));
 });
 
 
-test("the final screen shows 10/10 answers, 29 seconds and a total of 100",()=>{
+test("the final screen shows 10/10 answers, 29 seconds and a total of 98",()=>{
  const clock={now:0};const ui=boot(false,{level:true,clock});
  for(let i=1;i<=10;i++){clock.now=i*2900;ui.answer(ui.correctAnswer());ui.next();}
  assert.ok(ui.card.innerHTML.includes('10/10 отговора <strong>— 90 точки</strong>'));
- assert.ok(ui.card.innerHTML.includes('29 секунди <strong>— 10 точки</strong>'));
- assert.ok(ui.card.innerHTML.includes('ОБЩО</span>100<span>ТОЧКИ'));
+ assert.ok(ui.card.innerHTML.includes('29 секунди <strong>— 8 точки</strong>'));
+ assert.ok(ui.card.innerHTML.includes('ОБЩО</span>98<span>ТОЧКИ'));
  assert.equal(ui.timers[0].delay,4000);assert.ok(!ui.card.innerHTML.includes('Виж всички решения'));
 });
 test("lion and non-lion endings play distinct completion sounds",()=>{
@@ -186,4 +187,41 @@ test("lion and non-lion endings play distinct completion sounds",()=>{
 test("muting also silences the completion sound",()=>{
  const ui=boot(true,{level:true});const toggle={setAttribute(){},textContent:''};ui.card.listeners.click({target:{closest:()=>toggle}});const before=ui.tones.length;
  for(let i=0;i<10;i++){ui.answer(ui.correctAnswer());ui.next();}assert.equal(ui.tones.length,before);
+});
+
+
+test("first play requires a name, then shows it persistently and preserves separate players",()=>{
+ const ui=boot(false,{level:true,noProfile:true});assert.equal(ui.get('#player-dialog').open,true);assert.equal(ui.submissions.length,0);
+ ui.get('#player-input').value='Ива';ui.get('#player-form').listeners.submit({preventDefault(){}});
+ assert.equal(ui.get('#player-name').textContent,'Ива');assert.ok(ui.card.innerHTML.includes('Ниво 1'));
+ for(let i=0;i<10;i++){ui.answer(ui.correctAnswer());ui.next();}ui.next();
+ ui.get('#new-player').listeners.click();ui.get('#player-input').value='Боби';ui.get('#player-form').listeners.submit({preventDefault(){}});
+ assert.equal(ui.get('#player-name').textContent,'Боби');assert.ok(!ui.card.innerHTML.includes('level-passed'));
+ let data=JSON.parse(ui.storage.get('smetni.players.v1'));const iva=data.players.find(p=>p.name==='Ива');assert.ok(iva.progress[1].passed);
+ ui.get('#switch-player').listeners.click();ui.get('#player-select').value=iva.id;ui.get('#player-select').listeners.change();ui.get('#player-form').listeners.submit({preventDefault(){}});
+ assert.equal(ui.get('#player-name').textContent,'Ива');assert.match(ui.card.innerHTML,/level-passed/);
+ const reload=boot(false,{home:true,storage:ui.storage});assert.equal(reload.get('#player-name').textContent,'Ива');
+ reload.get('#reset-button').listeners.click();data=JSON.parse(ui.storage.get('smetni.players.v1'));assert.equal(data.players.length,2);assert.deepEqual(data.players.find(p=>p.name==='Ива').progress,{});
+});
+test("cancelling name entry never starts a game and the first player inherits existing progress",()=>{
+ const storage=new Map([['smetni.progress.v1',JSON.stringify({1:{passed:true,points:90}})]]);
+ const ui=boot(false,{level:true,noProfile:true,storage});ui.get('#player-cancel').listeners.click();assert.equal(ui.get('#player-dialog').open,false);assert.equal(ui.storage.has('smetni.players.v1'),false);
+ ui.get('#start-button').listeners.click();ui.get('#player-input').value='Ани';ui.get('#player-form').listeners.submit({preventDefault(){}});
+ assert.ok(ui.card.innerHTML.includes('Ниво 2'));const data=JSON.parse(storage.get('smetni.players.v1'));assert.equal(data.players[0].progress[1].points,90);
+});
+test("names are displayed as text and escaped in the player picker",()=>{
+ const ui=boot(false,{home:true,noProfile:true});ui.get('#new-player').listeners.click();ui.get('#player-input').value='<b>Мая</b>';ui.get('#player-form').listeners.submit({preventDefault(){}});
+ assert.equal(ui.get('#player-name').textContent,'<b>Мая</b>');ui.get('#switch-player').listeners.click();assert.ok(ui.get('#player-select').innerHTML.includes('&lt;b&gt;Мая&lt;/b&gt;'));
+});
+test("initial home omits progress counters, level descriptions and completion instructions",()=>{
+ const ui=boot(false,{home:true});assert.ok(!ui.card.innerHTML.includes('ПРЕМИНАТИ НИВА'));assert.ok(!ui.card.innerHTML.includes('резултати до'));assert.ok(!ui.card.innerHTML.includes('Завърши 10-те задачи'));
+});
+
+
+test("reset affects only the selected player's saved game",()=>{
+ const store={activeId:'one',players:[{id:'one',name:'Ана',settings:{min:0,max:10,operation:'+'},progress:{1:{passed:true,points:90}},rankings:[]},{id:'two',name:'Борис',settings:{min:0,max:5,operation:'-'},progress:{1:{passed:true,points:99},2:{passed:true,points:100}},rankings:[]}]};
+ const storage=new Map([['smetni.players.v1',JSON.stringify(store)]]);const ui=boot(false,{home:true,storage});ui.get('#reset-button').listeners.click();
+ const saved=JSON.parse(storage.get('smetni.players.v1'));assert.deepEqual(saved.players[0].progress,{});assert.equal(saved.players[1].progress[2].points,100);
+ ui.get('#switch-player').listeners.click();ui.get('#player-select').value='two';ui.get('#player-form').listeners.submit({preventDefault(){}});
+ assert.equal(ui.get('#player-name').textContent,'Борис');ui.get('#start-button').listeners.click();assert.ok(ui.card.innerHTML.includes('Ниво 3'));
 });
