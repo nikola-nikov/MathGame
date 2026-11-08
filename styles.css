@@ -367,3 +367,28 @@ body[data-screen=rankings] .page-heading{display:none}.ranking-list{flex:1;min-h
 .restart-button{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:8px 16px;border-color:#d7e4c7;background:#f2f7eb;color:#52734a;font-size:13px;touch-action:manipulation}
 .restart-button .icon{width:19px;height:19px}
 @media(max-height:600px){.quiz-footer{padding-bottom:6px}.question-body{justify-content:flex-start;overflow-y:auto;overscroll-behavior:contain}.question-body .answer-choices{flex-shrink:0}}
+
+/* Playful lettering with Cyrillic-capable system fonts; works offline. */
+.site-header{height:76px;min-height:76px}
+.site-header .brand{gap:10px;letter-spacing:.3px;font-family:"Comic Sans MS","Chalkboard SE","Marker Felt","Trebuchet MS",sans-serif;font-weight:900;line-height:1.05;text-transform:uppercase}
+.site-header .brand-mark{width:40px;height:40px}
+.site-header .brand>.brand-title{display:flex;flex-direction:column;max-width:none;min-width:0;font-size:clamp(18px,3.5vw,23px);color:#397758;text-shadow:0 2px 0 #dce8cb}
+.brand-title>span:last-child{font-size:1.3em;letter-spacing:1.8px;color:#64843c}
+@media(max-width:540px){
+  .site-header{height:108px;min-height:108px;grid-template-columns:minmax(0,1fr) 44px;grid-template-rows:58px 44px;gap:0 8px;padding-bottom:6px}
+  .site-header .brand{grid-column:1/-1;justify-self:center;gap:10px}
+  .site-header .brand>.brand-title{font-size:21px}
+  .site-header .brand-mark{width:42px;height:42px}
+  .player-header{grid-column:1;justify-self:start;width:min(220px,100%)}
+  .player-header>summary{justify-content:flex-start}
+  .profile-options{left:0;right:auto}
+  .game-menu{grid-column:2}
+}
+@media(max-height:480px) and (orientation:landscape){
+  .site-header{height:58px;min-height:58px;grid-template-columns:minmax(0,1fr) minmax(65px,120px) 44px;grid-template-rows:auto;padding-bottom:0;gap:8px}
+  .site-header .brand{grid-column:1;justify-self:start;gap:6px}
+  .site-header .brand>.brand-title{font-size:16px}
+  .site-header .brand-mark{width:30px;height:30px}
+  .player-header{grid-column:2;width:100%}
+  .game-menu{grid-column:3}
+}
