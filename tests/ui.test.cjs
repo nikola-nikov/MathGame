@@ -6,7 +6,7 @@ const vm=require("node:vm");
 const math=require("../math.js");
 function boot(withAudio=false, options={}){
   const storage=options.storage || new Map();let current=null;let timeoutId=0;
-  const nodes=new Map(), timers=[], tones=[], stops=[], submissions=[];
+  const nodes=new Map(), timers=[], tones=[], stops=[], submissions=[], confirmations=[], alerts=[];
   function element(){const classes=new Set();return {listeners:{},dataset:{},attributes:{},textContent:"",disabled:false,classList:{add:(...v)=>v.forEach(x=>classes.add(x)),remove:(...v)=>v.forEach(x=>classes.delete(x)),toggle:(v,on)=>on?classes.add(v):classes.delete(v),contains:v=>classes.has(v)},addEventListener(type,fn){this.listeners[type]=fn;},setAttribute(k,v){this.attributes[k]=v;},insertAdjacentHTML(){},focus(){},scrollIntoView(){},prepend(){}};}
   const get=key=>{if(!nodes.has(key))nodes.set(key,element());return nodes.get(key);};
   const card=get("#game-card");let html="",buttons=[],steps=[];
@@ -14,13 +14,13 @@ function boot(withAudio=false, options={}){
   card.querySelector=key=>get(key);card.querySelectorAll=key=>key==="[data-answer]"?buttons:steps;
   const form=get("#settings-form");form.elements={min:{value:0},max:{value:0},operation:{value:"+"}};form.querySelector=()=>element();
   const document={querySelector:get,body:element(),documentElement:element(),createElement:element};
-  const window={Campaign:{...require("../campaign.js"),createLevelSession(...args){current=require("../campaign.js").createLevelSession(...args);return current;}},confirm:()=>true,MathGame:{...math,submitAnswer(...args){const result=math.submitAnswer(...args);submissions.push(result);current=result;return result;}},setInterval:()=>1,clearInterval(){},setTimeout(fn,delay){const id=++timeoutId;timers.push({id,fn,delay});return id;},clearTimeout(id){const i=timers.findIndex(t=>t.id===id);if(i>=0)timers.splice(i,1);}};
+  const window={Campaign:{...require("../campaign.js"),createLevelSession(...args){current=require("../campaign.js").createLevelSession(...args);return current;}},confirm:message=>{confirmations.push(message);return options.confirm!==false;},alert:message=>alerts.push(message),MathGame:{...math,submitAnswer(...args){const result=math.submitAnswer(...args);submissions.push(result);current=result;return result;}},setInterval:()=>1,clearInterval(){},setTimeout(fn,delay){const id=++timeoutId;timers.push({id,fn,delay});return id;},clearTimeout(id){const i=timers.findIndex(t=>t.id===id);if(i>=0)timers.splice(i,1);}};
   if(withAudio)window.AudioContext=class{constructor(){this.state=options.suspended?"suspended":"running";this.currentTime=0;this.destination={};}resume(){this.state="running";return Promise.resolve();}createOscillator(){return {frequency:{setValueAtTime:v=>tones.push(v),exponentialRampToValueAtTime(){}},connect(){},start(){},stop(time){if(time!==undefined)stops.push(time);},disconnect(){}};}createGain(){return {gain:{setValueAtTime(){},linearRampToValueAtTime(){},exponentialRampToValueAtTime(){}},connect(){},disconnect(){}};}};
-  vm.runInNewContext(fs.readFileSync(require.resolve("../app.js"),"utf8"),{window,document,localStorage:{getItem:key=>storage.get(key)||null,setItem:(key,value)=>storage.set(key,value)},FormData:class{get(key){return {min:0,max:0,operation:"+"}[key];}},console});
+  vm.runInNewContext(fs.readFileSync(require.resolve("../app.js"),"utf8"),{window,document,localStorage:{getItem:key=>storage.get(key)||null,setItem:(key,value)=>storage.set(key,value),removeItem:key=>{if(options.failReset)throw Error("Storage denied");storage.delete(key);}},FormData:class{get(key){return {min:0,max:0,operation:"+"}[key];}},console});
   if(options.home){}
   else if(options.level)get("#start-button").listeners.click();
   else {get("#mode-custom").listeners.click();form.listeners.submit({preventDefault(){}});}
-  return {card,get,timers,tones,stops,submissions,storage,correctAnswer:()=>current.questions[current.answers.length].answer,buttons:()=>buttons,answer(value){buttons.find(b=>Number(b.dataset.answer)===value).listeners.click();},next(){timers.shift().fn();}};
+  return {card,get,timers,tones,stops,submissions,storage,confirmations,alerts,correctAnswer:()=>current.questions[current.answers.length].answer,buttons:()=>buttons,answer(value){buttons.find(b=>Number(b.dataset.answer)===value).listeners.click();},next(){timers.shift().fn();}};
 }
 test("answers flash immediately, reject duplicate clicks, and advance through all 10 without another button",()=>{
  const ui=boot();
@@ -138,4 +138,31 @@ test("home reveals level 11 only after level 10 and retains progress past level 
   const count=Math.max(10,Math.ceil((completed+1)/5)*5);assert.equal((ui.card.innerHTML.match(/data-level="/g)||[]).length,count);
   const next=ui.card.innerHTML.match(new RegExp('<button[^>]+data-level="'+(completed+1)+'"[^>]*>'))[0];assert.ok(!next.includes('disabled'));
  }
+});
+
+
+test("reset asks for confirmation and cancellation preserves progress and the active game",()=>{
+ const storage=new Map([["smetni.progress.v1",JSON.stringify({1:{passed:true,points:100}})],["smetni.rankings.v1","[]"]]);
+ const ui=boot(false,{level:true,storage,confirm:false});ui.answer(ui.correctAnswer());
+ const html=ui.card.innerHTML;const saved=[...storage];const pending=ui.timers.length;
+ ui.get('#reset-button').listeners.click();assert.equal(ui.confirmations.length,1);
+ assert.deepEqual([...storage],saved);assert.equal(ui.card.innerHTML,html);assert.equal(ui.timers.length,pending);
+ ui.next();assert.ok(ui.card.innerHTML.includes('Ниво 2'));
+});
+test("confirmed reset clears only game data, cancels transitions and returns to level 1",()=>{
+ const storage=new Map([["unrelated-key","keep"],["smetni.progress.v1",JSON.stringify({1:{passed:true,points:100}})],["smetni.rankings.v1","[]"],["smetni.settings.v1",JSON.stringify({min:3,max:5,operation:"-"})]]);
+ const ui=boot(false,{level:true,storage});for(let i=0;i<10;i++){ui.answer(ui.correctAnswer());ui.next();}
+ assert.equal(ui.timers.length,1);ui.get('#reset-button').listeners.click();
+ assert.equal(ui.timers.length,0);assert.equal(storage.get('unrelated-key'),'keep');
+ for(const key of ['smetni.progress.v1','smetni.rankings.v1','smetni.settings.v1'])assert.ok(!storage.has(key));
+ assert.ok(ui.card.innerHTML.includes('0 ПРЕМИНАТИ НИВА'));assert.ok(!ui.card.innerHTML.includes('level-passed'));
+ assert.ok(ui.card.innerHTML.match(/<button[^>]+data-level="2"[^>]*>/)[0].includes('disabled'));
+ assert.equal(ui.get('#settings-form').elements.max.value,10);
+ assert.match(ui.card.innerHTML,/id="start-button">Играя<\/button>/);
+ const reload=boot(false,{level:true,storage});assert.ok(reload.card.innerHTML.includes('Ниво 1'));
+});
+test("failed storage deletion is explained without preventing a fresh in-memory game",()=>{
+ const ui=boot(false,{level:true,failReset:true});ui.get('#reset-button').listeners.click();
+ assert.equal(ui.alerts.length,1);assert.ok(ui.alerts[0].includes('При презареждане'));
+ assert.ok(ui.card.innerHTML.includes('0 ПРЕМИНАТИ НИВА'));
 });

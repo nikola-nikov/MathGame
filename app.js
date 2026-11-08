@@ -101,7 +101,7 @@ function renderWelcome(focus = false, awardedLevel = null) {
  phase='welcome';stopTimer();cancelFeedback();setLocked(false);homeControls.hidden=false;settingsPanel.hidden=homeMode!=='custom';
  document.querySelector('#mode-levels').setAttribute('aria-pressed',String(homeMode==='levels'));document.querySelector('#mode-custom').setAttribute('aria-pressed',String(homeMode==='custom'));
  const next=unlockedLevel(progress), completed=Object.values(progress).filter(record=>record.passed).length;if(selectedLevel>next)selectedLevel=next;const level=getLevel(selectedLevel);
- card.innerHTML=`<div class="home-body"><div class="home-intro"><div><p class="eyebrow">${homeMode==='levels'?completed+' ПРЕМИНАТИ НИВА':'ТИ ИЗБИРАШ ЗАДАЧИТЕ'}</p><h2>${homeMode==='levels'?'Една стъпка по-нагоре!':'Да потренираме!'}</h2></div><img src="assets/lion.svg" alt="" width="82" height="72"></div><div class="home-actions"><button class="primary-button" type="button" id="start-button">Играя ${icon('arrow')}</button><button class="secondary-button" type="button" id="rankings-button" aria-label="Класация" title="Класация"><img src="assets/podium.svg" alt="" width="92" height="48"></button></div>${homeMode==='levels'?`<p class="level-summary">Ниво ${level.id} · резултати до ${level.max} · ${10-level.subtractionCount} събирания и ${level.subtractionCount} изваждания</p><div class="levels-grid" role="group" aria-label="Избери ниво">${visibleLevels(progress).map(item=>{const record=progress[item.id],locked=item.id>next,reward=record?REWARDS.find(r=>record.points>=r.min):null;return `<button type="button" class="level-tile${item.id === awardedLevel ? " reward-arrival" : ""} ${record?.passed?'level-passed':''} ${item.id===selectedLevel?'level-selected':''}" data-level="${item.id}" aria-pressed="${item.id===selectedLevel}" aria-label="Ниво ${item.id}, ${locked?'заключено':record?.passed?'преминато, '+record.points+' точки, '+reward.name:'достъпно'}" ${locked?'disabled':''}><strong>${item.id}</strong>${record?.passed?`<img class="level-animal" src="assets/${reward.file}.svg" alt="Най-добро животно: ${reward.name}" title="${reward.name} · ${record.points} точки" width="44" height="38">`:`<span class="level-state">${locked?'🔒':'Играй'}</span>`}</button>`;}).join('')}</div><p class="home-help">Завърши 10-те задачи, за да отключиш следващото ниво. Зелените нива могат да се играят отново за по-добро животно.</p>`:'<p class="home-help">10 задачи според твоите настройки. Избери числата и операциите по-горе.</p>'}<p class="storage-note">${storageAvailable?'Напредъкът и класацията се пазят на това устройство.':'Запазването е недостъпно. Напредъкът остава само до затваряне на страницата.'}</p></div>`;
+ card.innerHTML=`<div class="home-body"><div class="home-intro"><div><p class="eyebrow">${homeMode==='levels'?completed+' ПРЕМИНАТИ НИВА':'ТИ ИЗБИРАШ ЗАДАЧИТЕ'}</p><h2>${homeMode==='levels'?'Една стъпка по-нагоре!':'Да потренираме!'}</h2></div><img src="assets/lion.svg" alt="" width="82" height="72"></div><div class="home-actions"><button class="primary-button" type="button" id="start-button">Играя</button><button class="secondary-button" type="button" id="rankings-button" aria-label="Класация" title="Класация"><img src="assets/podium.svg" alt="" width="92" height="48"></button></div>${homeMode==='levels'?`<p class="level-summary">Ниво ${level.id} · резултати до ${level.max} · ${10-level.subtractionCount} събирания и ${level.subtractionCount} изваждания</p><div class="levels-grid" role="group" aria-label="Избери ниво">${visibleLevels(progress).map(item=>{const record=progress[item.id],locked=item.id>next,reward=record?REWARDS.find(r=>record.points>=r.min):null;return `<button type="button" class="level-tile${item.id === awardedLevel ? " reward-arrival" : ""} ${record?.passed?'level-passed':''} ${item.id===selectedLevel?'level-selected':''}" data-level="${item.id}" aria-pressed="${item.id===selectedLevel}" aria-label="Ниво ${item.id}, ${locked?'заключено':record?.passed?'преминато, '+record.points+' точки, '+reward.name:'достъпно'}" ${locked?'disabled':''}><strong>${item.id}</strong>${record?.passed?`<img class="level-animal" src="assets/${reward.file}.svg" alt="Най-добро животно: ${reward.name}" title="${reward.name} · ${record.points} точки" width="44" height="38">`:`<span class="level-state">${locked?'🔒':'Играй'}</span>`}</button>`;}).join('')}</div><p class="home-help">Завърши 10-те задачи, за да отключиш следващото ниво. Зелените нива могат да се играят отново за по-добро животно.</p>`:'<p class="home-help">10 задачи според твоите настройки. Избери числата и операциите по-горе.</p>'}<p class="storage-note">${storageAvailable?'Напредъкът и класацията се пазят на това устройство.':'Запазването е недостъпно. Напредъкът остава само до затваряне на страницата.'}</p></div>`;
  card.querySelector('#start-button').addEventListener('click',()=>{if(homeMode==='levels')startSession(null,selectedLevel);else settingsForm.requestSubmit();});
  card.querySelector('#rankings-button').addEventListener('click',renderRankings);
  card.querySelectorAll('[data-level]').forEach(button=>button.addEventListener('click',()=>{const id=Number(button.dataset.level);if(id>unlockedLevel(progress))return;selectedLevel=id;renderWelcome();card.querySelector('[data-level="'+id+'"]').focus();}));
@@ -348,6 +348,34 @@ function renderRankings(){document.body.dataset.screen='rankings';phase='ranking
     toggle.setAttribute("aria-pressed", String(soundEnabled));
     toggle.setAttribute("aria-label", soundEnabled ? "Изключи звука" : "Включи звука");
     toggle.textContent = soundEnabled ? "Звук: вкл." : "Звук: изкл.";
+  });
+
+  document.querySelector("#reset-button").addEventListener("click", () => {
+    if (!window.confirm("Да започнем ли отначало? Всички преминати нива, спечелени животни, класацията и настройките ще бъдат изтрити на това устройство.")) return;
+    stopTimer();
+    cancelFeedback();
+    stopJungleSound();
+    if (animalTimeout !== null) window.clearTimeout(animalTimeout);
+    animalTimeout = null;
+    if (dancingAnimal) dancingAnimal.classList.remove("animal-dancing");
+    dancingAnimal = null;
+    session = null;
+    progress = {};
+    rankings = [];
+    homeMode = "levels";
+    selectedLevel = 1;
+    settingsForm.elements.min.value = 0;
+    settingsForm.elements.max.value = 10;
+    settingsForm.elements.operation.value = "+";
+    settingsError.hidden = true;
+    document.querySelector("#animal-joke").textContent = "";
+    let failed = false;
+    for (const key of [storageKey, "smetni.progress.v1", "smetni.rankings.v1"]) {
+      try { localStorage.removeItem(key); } catch { failed = true; }
+    }
+    storageAvailable = !failed;
+    renderWelcome(true);
+    if (failed) window.alert("Играта е нулирана за тази сесия, но браузърът не разрешава изтриване на запазените данни. При презареждане старият напредък може да се върне.");
   });
 
   document.querySelector("#mode-levels").addEventListener("click",()=>{homeMode="levels";renderWelcome();});

@@ -304,3 +304,7 @@ body[data-screen=rankings] .page-heading{display:none}.ranking-list{flex:1;min-h
 
 /* Five levels per row; new rows appear only when reached. */
 .levels-grid{grid-template-columns:repeat(5,minmax(0,1fr))}
+
+#reset-button{color:#8b6b36;border-color:#e4d9bd;background:#fbf8ee}
+#reset-button:hover{background:#f3ead6}
+@media(max-width:430px){.site-header{gap:7px}.site-header .brand{font-size:22px;gap:5px}.site-header .brand-mark{width:26px;height:26px;font-size:23px}.header-actions{gap:5px}.header-actions .utility-button{font-size:10px;min-height:44px;padding:6px 8px}.header-actions #fullscreen-button{font-size:0;width:44px;padding:5px}.header-actions #fullscreen-button:before{content:"⛶";font-size:22px;line-height:1}}
