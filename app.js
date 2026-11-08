@@ -16,6 +16,7 @@
   let feedbackTimeout = null;
   let audioContext = null;
   let soundEnabled = true;
+  let jungleVoices = [];
   let homeMode = "levels";
   let selectedLevel = 1;
   let progress = {};
@@ -97,7 +98,7 @@ function renderWelcome(focus = false) {
  phase='welcome';stopTimer();cancelFeedback();setLocked(false);homeControls.hidden=false;settingsPanel.hidden=homeMode!=='custom';
  document.querySelector('#mode-levels').setAttribute('aria-pressed',String(homeMode==='levels'));document.querySelector('#mode-custom').setAttribute('aria-pressed',String(homeMode==='custom'));
  const next=unlockedLevel(progress), completed=LEVELS.filter(l=>progress[l.id]?.passed).length;if(selectedLevel>next)selectedLevel=next;const level=LEVELS[selectedLevel-1];
- card.innerHTML=`<div class="home-body"><div class="home-intro"><div><p class="eyebrow">${homeMode==='levels'?completed+' ОТ 20 ПРЕМИНАТИ НИВА':'ТИ ИЗБИРАШ ЗАДАЧИТЕ'}</p><h2>${homeMode==='levels'?'Една стъпка по-нагоре!':'Да потренираме!'}</h2></div><img src="assets/lion.svg" alt="" width="82" height="72"></div><div class="home-actions"><button class="primary-button" type="button" id="start-button">Играя ${icon('arrow')}</button><button class="secondary-button" type="button" id="rankings-button">★ Класация</button></div>${homeMode==='levels'?`<p class="level-summary">Ниво ${level.id} · резултати до ${level.max} · ${10-level.subtractionCount} събирания и ${level.subtractionCount} изваждания</p><div class="levels-grid" role="group" aria-label="Избери ниво">${LEVELS.map(item=>{const record=progress[item.id],locked=item.id>next,reward=record?REWARDS.find(r=>record.points>=r.min):null;return `<button type="button" class="level-tile ${record?.passed?'level-passed':''} ${item.id===selectedLevel?'level-selected':''}" data-level="${item.id}" aria-pressed="${item.id===selectedLevel}" aria-label="Ниво ${item.id}, ${locked?'заключено':record?.passed?'преминато, '+record.points+' точки, '+reward.name:'достъпно'}" ${locked?'disabled':''}><strong>${item.id}</strong>${record?.passed?`<img class="level-animal" src="assets/${reward.file}.svg" alt="Най-добро животно: ${reward.name}" title="${reward.name} · ${record.points} точки" width="44" height="38">`:`<span class="level-state">${locked?'🔒':'Играй'}</span>`}</button>`;}).join('')}</div><p class="home-help">Завърши 10-те задачи, за да отключиш следващото ниво. Зелените нива могат да се играят отново за по-добро животно.</p>`:'<p class="home-help">10 задачи според твоите настройки. Избери числата и операциите по-горе.</p>'}<p class="storage-note">${storageAvailable?'Напредъкът и класацията се пазят на това устройство.':'Запазването е недостъпно. Напредъкът остава само до затваряне на страницата.'}</p></div>`;
+ card.innerHTML=`<div class="home-body"><div class="home-intro"><div><p class="eyebrow">${homeMode==='levels'?completed+' ОТ 20 ПРЕМИНАТИ НИВА':'ТИ ИЗБИРАШ ЗАДАЧИТЕ'}</p><h2>${homeMode==='levels'?'Една стъпка по-нагоре!':'Да потренираме!'}</h2></div><img src="assets/lion.svg" alt="" width="82" height="72"></div><div class="home-actions"><button class="primary-button" type="button" id="start-button">Играя ${icon('arrow')}</button><button class="secondary-button" type="button" id="rankings-button" aria-label="Класация" title="Класация"><img src="assets/podium.svg" alt="" width="92" height="48"></button></div>${homeMode==='levels'?`<p class="level-summary">Ниво ${level.id} · резултати до ${level.max} · ${10-level.subtractionCount} събирания и ${level.subtractionCount} изваждания</p><div class="levels-grid" role="group" aria-label="Избери ниво">${LEVELS.map(item=>{const record=progress[item.id],locked=item.id>next,reward=record?REWARDS.find(r=>record.points>=r.min):null;return `<button type="button" class="level-tile ${record?.passed?'level-passed':''} ${item.id===selectedLevel?'level-selected':''}" data-level="${item.id}" aria-pressed="${item.id===selectedLevel}" aria-label="Ниво ${item.id}, ${locked?'заключено':record?.passed?'преминато, '+record.points+' точки, '+reward.name:'достъпно'}" ${locked?'disabled':''}><strong>${item.id}</strong>${record?.passed?`<img class="level-animal" src="assets/${reward.file}.svg" alt="Най-добро животно: ${reward.name}" title="${reward.name} · ${record.points} точки" width="44" height="38">`:`<span class="level-state">${locked?'🔒':'Играй'}</span>`}</button>`;}).join('')}</div><p class="home-help">Завърши 10-те задачи, за да отключиш следващото ниво. Зелените нива могат да се играят отново за по-добро животно.</p>`:'<p class="home-help">10 задачи според твоите настройки. Избери числата и операциите по-горе.</p>'}<p class="storage-note">${storageAvailable?'Напредъкът и класацията се пазят на това устройство.':'Запазването е недостъпно. Напредъкът остава само до затваряне на страницата.'}</p></div>`;
  card.querySelector('#start-button').addEventListener('click',()=>{if(homeMode==='levels')startSession(null,selectedLevel);else settingsForm.requestSubmit();});
  card.querySelector('#rankings-button').addEventListener('click',renderRankings);
  card.querySelectorAll('[data-level]').forEach(button=>button.addEventListener('click',()=>{const id=Number(button.dataset.level);if(id>unlockedLevel(progress))return;selectedLevel=id;renderWelcome();card.querySelector('[data-level="'+id+'"]').focus();}));
@@ -142,6 +143,52 @@ function renderRankings(){document.body.dataset.screen='rankings';phase='ranking
     }
     playFeedback(session.answers[session.answers.length - 1].correct);
     renderFeedback();
+  }
+
+  function stopJungleSound() {
+    for (const oscillator of jungleVoices) { try { oscillator.stop(); } catch {} }
+    jungleVoices = [];
+  }
+
+  function playJungleSound(animal = "welcome") {
+    if (!soundEnabled) return;
+    try {
+      const Audio = window.AudioContext || window.webkitAudioContext;
+      if (!Audio) return;
+      if (!audioContext) audioContext = new Audio();
+      const context = audioContext;
+      const play = () => {
+        if (context.state !== "running") return;
+        stopJungleSound();
+        // Soft cartoon calls: monkey-like hoots, bird chirps and an elephant flourish.
+        const calls = {
+          lion: [[0,160,75,.3,"triangle"],[.3,130,65,.35,"triangle"],[.7,220,110,.3,"triangle"]],
+          elephant: [[0,210,650,.35,"sawtooth"],[.38,430,200,.3,"triangle"],[.75,300,520,.35,"triangle"]],
+          dolphin: [[0,900,1600,.15,"sine"],[.2,1100,750,.16,"sine"],[.45,1000,1700,.22,"sine"]],
+          fox: [[0,440,740,.13,"triangle"],[.18,660,880,.13,"triangle"],[.4,520,260,.25,"sine"]],
+          rabbit: [[0,500,900,.14,"sine"],[.22,600,1100,.14,"sine"],[.46,700,1300,.18,"sine"]],
+          turtle: [[0,220,165,.3,"sine"],[.36,196,146,.35,"sine"],[.78,262,330,.25,"sine"]],
+          welcome: [[0,380,180,.18,"sine"],[.2,480,220,.18,"sine"],[.43,900,1600,.12,"sine"],[.59,1200,800,.13,"sine"],[.8,523,523,.13,"sine"],[.96,659,659,.13,"sine"],[1.12,784,784,.15,"sine"],[1.32,260,560,.25,"triangle"],[1.58,784,1046,.15,"sine"]]
+        };
+        const now = context.currentTime;
+        for (const [offset, from, to, duration, type] of calls[animal] || calls.welcome) {
+          const oscillator = context.createOscillator(), gain = context.createGain();
+          const begin = now + offset;
+          oscillator.type = type;
+          oscillator.frequency.setValueAtTime(from, begin);
+          oscillator.frequency.exponentialRampToValueAtTime(to, begin + duration);
+          gain.gain.setValueAtTime(0, begin);
+          gain.gain.linearRampToValueAtTime(type === "sawtooth" ? 0.035 : 0.09, begin + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.001, begin + duration);
+          oscillator.connect(gain); gain.connect(context.destination);
+          oscillator.onended = () => { oscillator.disconnect(); gain.disconnect(); };
+          jungleVoices.push(oscillator);
+          oscillator.start(begin); oscillator.stop(begin + duration + 0.02);
+        }
+      };
+      if (context.state === "suspended") context.resume().then(play).catch(() => {});
+      else play();
+    } catch { /* Play remains available when sound is unsupported or blocked. */ }
   }
 
   function playFeedback(correct) {
@@ -271,6 +318,7 @@ function renderRankings(){document.body.dataset.screen='rankings';phase='ranking
     session = levelId ? createLevelSession(levelId, progress) : createSession(settings);
     homeControls.hidden = true;
     settingsPanel.hidden = true;
+    playJungleSound();
     document.body.classList.add("is-playing");
     enterFullscreen();
     setLocked(true);
@@ -301,6 +349,7 @@ function renderRankings(){document.body.dataset.screen='rankings';phase='ranking
     const toggle = event.target.closest("[data-sound-toggle]");
     if (!toggle) return;
     soundEnabled = !soundEnabled;
+    if (!soundEnabled) stopJungleSound();
     toggle.setAttribute("aria-pressed", String(soundEnabled));
     toggle.setAttribute("aria-label", soundEnabled ? "Изключи звука" : "Включи звука");
     toggle.textContent = soundEnabled ? "Звук: вкл." : "Звук: изкл.";
@@ -321,6 +370,28 @@ function renderRankings(){document.body.dataset.screen='rankings';phase='ranking
     const manifest = document.createElement("link"); manifest.rel="manifest"; manifest.href="manifest.webmanifest"; document.head.append(manifest);
   }
   document.querySelector(".brand").addEventListener("click",event=>{event.preventDefault();document.querySelector("#home-button").click();});
+  const animalLines = {
+    lion: "Лъвът: Ррр… кой скри моите числа?",
+    elephant: "Слонът: С хобот смятам по-добре!",
+    dolphin: "Делфинът: Пльос! Още една вълна от задачи!",
+    fox: "Лисицата: Хитро, нали? Аз пак опитвам!",
+    rabbit: "Зайчето: Скок-подскок, числата са тук!",
+    turtle: "Костенурката: Бавно, славно… и с усмивка!"
+  };
+  let dancingAnimal = null, animalTimeout = null;
+  document.querySelector("#jungle-animals").addEventListener("click", event => {
+    const button = event.target.closest("[data-animal]");
+    if (!button || !animalLines[button.dataset.animal]) return;
+    if (animalTimeout !== null) window.clearTimeout(animalTimeout);
+    if (dancingAnimal) dancingAnimal.classList.remove("animal-dancing");
+    button.classList.remove("animal-dancing");
+    void button.offsetWidth;
+    button.classList.add("animal-dancing");
+    dancingAnimal = button;
+    document.querySelector("#animal-joke").textContent = animalLines[button.dataset.animal];
+    playJungleSound(button.dataset.animal);
+    animalTimeout = window.setTimeout(() => { button.classList.remove("animal-dancing"); dancingAnimal = null; animalTimeout = null; }, 1400);
+  });
   restoreSettings();
   renderWelcome();
 })();

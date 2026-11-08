@@ -6,7 +6,7 @@ const vm=require("node:vm");
 const math=require("../math.js");
 function boot(withAudio=false, options={}){
   const storage=options.storage || new Map();let current=null;
-  const nodes=new Map(), timers=[], tones=[], submissions=[];
+  const nodes=new Map(), timers=[], tones=[], stops=[], submissions=[];
   function element(){const classes=new Set();return {listeners:{},dataset:{},attributes:{},textContent:"",disabled:false,classList:{add:(...v)=>v.forEach(x=>classes.add(x)),remove:(...v)=>v.forEach(x=>classes.delete(x)),toggle:(v,on)=>on?classes.add(v):classes.delete(v),contains:v=>classes.has(v)},addEventListener(type,fn){this.listeners[type]=fn;},setAttribute(k,v){this.attributes[k]=v;},insertAdjacentHTML(){},focus(){},scrollIntoView(){},prepend(){}};}
   const get=key=>{if(!nodes.has(key))nodes.set(key,element());return nodes.get(key);};
   const card=get("#game-card");let html="",buttons=[],steps=[];
@@ -15,11 +15,12 @@ function boot(withAudio=false, options={}){
   const form=get("#settings-form");form.elements={min:{value:0},max:{value:0},operation:{value:"+"}};form.querySelector=()=>element();
   const document={querySelector:get,body:element(),documentElement:element(),createElement:element};
   const window={Campaign:{...require("../campaign.js"),createLevelSession(...args){current=require("../campaign.js").createLevelSession(...args);return current;}},confirm:()=>true,MathGame:{...math,submitAnswer(...args){const result=math.submitAnswer(...args);submissions.push(result);current=result;return result;}},setInterval:()=>1,clearInterval(){},setTimeout(fn,delay){timers.push({fn,delay});return timers.length;},clearTimeout(){}};
-  if(withAudio)window.AudioContext=class{constructor(){this.state="running";this.currentTime=0;this.destination={};}createOscillator(){return {frequency:{setValueAtTime:v=>tones.push(v)},connect(){},start(){},stop(){},disconnect(){}};}createGain(){return {gain:{setValueAtTime(){},linearRampToValueAtTime(){},exponentialRampToValueAtTime(){}},connect(){},disconnect(){}};}};
+  if(withAudio)window.AudioContext=class{constructor(){this.state=options.suspended?"suspended":"running";this.currentTime=0;this.destination={};}resume(){this.state="running";return Promise.resolve();}createOscillator(){return {frequency:{setValueAtTime:v=>tones.push(v),exponentialRampToValueAtTime(){}},connect(){},start(){},stop(time){if(time!==undefined)stops.push(time);},disconnect(){}};}createGain(){return {gain:{setValueAtTime(){},linearRampToValueAtTime(){},exponentialRampToValueAtTime(){}},connect(){},disconnect(){}};}};
   vm.runInNewContext(fs.readFileSync(require.resolve("../app.js"),"utf8"),{window,document,localStorage:{getItem:key=>storage.get(key)||null,setItem:(key,value)=>storage.set(key,value)},FormData:class{get(key){return {min:0,max:0,operation:"+"}[key];}},console});
-  if(options.level)get("#start-button").listeners.click();
+  if(options.home){}
+  else if(options.level)get("#start-button").listeners.click();
   else form.listeners.submit({preventDefault(){}});
-  return {card,get,timers,tones,submissions,storage,correctAnswer:()=>current.questions[current.answers.length].answer,buttons:()=>buttons,answer(value){buttons.find(b=>Number(b.dataset.answer)===value).listeners.click();},next(){timers.shift().fn();}};
+  return {card,get,timers,tones,stops,submissions,storage,correctAnswer:()=>current.questions[current.answers.length].answer,buttons:()=>buttons,answer(value){buttons.find(b=>Number(b.dataset.answer)===value).listeners.click();},next(){timers.shift().fn();}};
 }
 test("answers flash immediately, reject duplicate clicks, and advance through all 10 without another button",()=>{
  const ui=boot();
@@ -42,9 +43,9 @@ test("answers flash immediately, reject duplicate clicks, and advance through al
  assert.equal(ui.timers.length,0);
 });
 test("feedback plays different sounds and the mute control silences subsequent answers",()=>{
- const ui=boot(true);ui.answer(0);assert.equal(ui.tones.length,3);ui.next();
- const wrong=Number(ui.buttons().find(b=>b.dataset.answer!=="0").dataset.answer);ui.answer(wrong);assert.equal(ui.tones.length,5);assert.equal(ui.tones[3],220);ui.next();
- const toggle={setAttribute(){},textContent:""};ui.card.listeners.click({target:{closest:()=>toggle}});ui.answer(0);assert.equal(ui.tones.length,5);
+ const ui=boot(true);const intro=ui.tones.length;ui.answer(0);assert.equal(ui.tones.length,intro+3);ui.next();
+ const wrong=Number(ui.buttons().find(b=>b.dataset.answer!=="0").dataset.answer);ui.answer(wrong);assert.equal(ui.tones.length,intro+5);assert.equal(ui.tones[intro+3],220);ui.next();
+ const toggle={setAttribute(){},textContent:""};ui.card.listeners.click({target:{closest:()=>toggle}});ui.answer(0);assert.equal(ui.tones.length,intro+5);
 });
 
 
@@ -79,4 +80,25 @@ test("low-scoring level completion survives the results-to-home route and reload
  assert.match(ui.card.innerHTML,/class="level-animal" src="assets\/turtle.svg"/);
  assert.ok(!ui.card.innerHTML.match(/<button[^>]+data-level="2"[^>]*>/)[0].includes("disabled"));
  const reload=boot(false,{level:true,storage:ui.storage});assert.ok(reload.card.innerHTML.includes("Ниво 2"));
+});
+
+
+test("home has an accessible podium picture below the play button",()=>{
+ const ui=boot(false,{home:true});assert.ok(ui.card.innerHTML.includes('id="start-button">Играя'));
+ assert.match(ui.card.innerHTML,/id="rankings-button" aria-label="Класация"[^>]*><img src="assets\/podium.svg"/);
+ assert.ok(ui.card.innerHTML.indexOf('id="start-button"')<ui.card.innerHTML.indexOf('id="rankings-button"'));
+});
+test("the start jingle lasts between one and two seconds and supports a suspended mobile audio context",async()=>{
+ const ui=boot(true,{level:true,suspended:true});await Promise.resolve();assert.equal(ui.tones.length,9);
+ assert.ok(Math.max(...ui.stops)>=1);assert.ok(Math.max(...ui.stops)<=2);
+ assert.ok(ui.card.innerHTML.includes('Ниво 1'));
+});
+test("each animal button responds with a joke, animation and its own short sound",()=>{
+ const ui=boot(true,{home:true});
+ for(const animal of ['lion','elephant','dolphin','fox','rabbit','turtle']){
+  const button=ui.get('[test-animal-'+animal+']');button.dataset.animal=animal;
+  const before=ui.tones.length;ui.get('#jungle-animals').listeners.click({target:{closest:()=>button}});
+  assert.ok(button.classList.contains('animal-dancing'));assert.ok(ui.get('#animal-joke').textContent.length>10);
+  assert.ok(ui.tones.length>before);ui.next();assert.ok(!button.classList.contains('animal-dancing'));
+ }
 });

@@ -6,7 +6,7 @@ const path = require("node:path");
 const root = __dirname;
 const port = Number(process.env.PORT || 4173);
 const types = { ".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".svg": "image/svg+xml", ".webmanifest": "application/manifest+json" };
-const publicFiles = new Set(["index.html", "styles.css", "math.js", "app.js", "favicon.svg", "campaign.js", "manifest.webmanifest", "assets/jungle.svg", "assets/lion.svg", "assets/elephant.svg", "assets/fox.svg", "assets/rabbit.svg", "assets/turtle.svg", "assets/dolphin.svg"]);
+const publicFiles = new Set(["index.html", "styles.css", "math.js", "app.js", "favicon.svg", "campaign.js", "manifest.webmanifest", "assets/podium.svg", "assets/jungle.svg", "assets/lion.svg", "assets/elephant.svg", "assets/fox.svg", "assets/rabbit.svg", "assets/turtle.svg", "assets/dolphin.svg"]);
 
 const server = http.createServer((request, response) => {
   let filename;

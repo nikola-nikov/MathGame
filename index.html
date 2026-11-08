@@ -8,10 +8,10 @@
     <meta name="description" content="Малка математическа игра за първи клас. Упражнявай събиране и изваждане с 10 забавни задачи.">
     <title>Математическа джунгла — Сметни!</title>
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=20261108-progress2">
-    <script src="math.js?v=20261108-progress2" defer></script>
-    <script src="campaign.js?v=20261108-progress2" defer></script>
-    <script src="app.js?v=20261108-progress2" defer></script>
+    <link rel="stylesheet" href="styles.css?v=20261108-animal-play">
+    <script src="math.js?v=20261108-animal-play" defer></script>
+    <script src="campaign.js?v=20261108-animal-play" defer></script>
+    <script src="app.js?v=20261108-animal-play" defer></script>
   </head>
   <body>
     <svg class="icon-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -33,7 +33,7 @@
       </header>
 
       <main>
-        <div class="page-heading jungle-heading"><h1>Математическа джунгла</h1><img src="assets/jungle.svg" alt="Лъв, слон, делфин, лисица, зайче и костенурка" width="460" height="110"></div>
+        <div class="page-heading jungle-heading"><h1 class="visually-hidden">Математическа джунгла</h1><div class="animal-parade" id="jungle-animals" role="group" aria-label="Натисни животно за изненада"><button class="animal-button animal-lion" type="button" data-animal="lion" aria-label="Лъв — забавна изненада"><img src="assets/lion.svg" alt="" width="64" height="56"></button><button class="animal-button animal-elephant" type="button" data-animal="elephant" aria-label="Слон — забавна изненада"><img src="assets/elephant.svg" alt="" width="64" height="56"></button><button class="animal-button animal-dolphin" type="button" data-animal="dolphin" aria-label="Делфин — забавна изненада"><img src="assets/dolphin.svg" alt="" width="64" height="56"></button><button class="animal-button animal-fox" type="button" data-animal="fox" aria-label="Лисица — забавна изненада"><img src="assets/fox.svg" alt="" width="64" height="56"></button><button class="animal-button animal-rabbit" type="button" data-animal="rabbit" aria-label="Зайче — забавна изненада"><img src="assets/rabbit.svg" alt="" width="64" height="56"></button><button class="animal-button animal-turtle" type="button" data-animal="turtle" aria-label="Костенурка — забавна изненада"><img src="assets/turtle.svg" alt="" width="64" height="56"></button></div><p id="animal-joke" class="animal-joke" role="status" aria-live="polite"></p></div>
 
         <div class="home-controls" id="home-controls"><div class="mode-switch" role="group" aria-label="Режим на игра"><button type="button" id="mode-levels" aria-pressed="true">Нива</button><button type="button" id="mode-custom" aria-pressed="false">По избор</button></div></div>
         <p id="screen-hint" class="screen-hint" role="status" hidden></p>
