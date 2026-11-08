@@ -27,3 +27,10 @@ test("unfinished games cannot record progress and malformed storage is ignored",
  assert.deepEqual(recordLevel({},createLevelSession(1,{})),{});assert.deepEqual(readProgress(null),{});assert.deepEqual(readProgress({1:{passed:true,points:101},2:{passed:true,points:100}}),{});
  assert.deepEqual(readProgress(JSON.parse(JSON.stringify({1:{passed:true,points:97},2:{passed:false,points:40}}))),{1:{passed:true,points:97},2:{passed:false,points:40}});
 });
+
+
+test("stored completed ranking recovers unlock and best reward without skipping levels",()=>{
+ const {recoverProgress}=require("../campaign.js");
+ const p=recoverProgress({},[{levelId:1,correct:10,points:100},{levelId:1,correct:7,points:68},{levelId:3,correct:10,points:100}]);
+ assert.equal(p[1].passed,true);assert.equal(p[1].points,100);assert.equal(unlockedLevel(p),2);assert.equal(p[3],undefined);
+});

@@ -69,7 +69,18 @@
     return result;
   }
 
-  const api = Object.freeze({ LEVELS: Object.freeze(LEVELS), PASS_COUNT, unlockedLevel, createLevelSession, recordLevel, readProgress });
+  function recoverProgress(raw, rankings) {
+    let progress = readProgress(raw);
+    const records = Array.isArray(rankings) ? rankings.filter(r => r && Number.isInteger(r.levelId) && r.levelId >= 1 && r.levelId <= LEVELS.length && Number.isInteger(r.points) && r.points >= 0 && r.points <= 100 && Number.isInteger(r.correct) && r.correct >= 0 && r.correct <= 10).sort((a, b) => a.levelId - b.levelId) : [];
+    for (const record of records) {
+      if (record.levelId > unlockedLevel(progress)) continue;
+      const previous = progress[record.levelId];
+      progress[record.levelId] = { passed: previous?.passed === true || record.correct >= PASS_COUNT, points: Math.max(previous?.points || 0, record.points) };
+    }
+    return progress;
+  }
+
+  const api = Object.freeze({ LEVELS: Object.freeze(LEVELS), PASS_COUNT, unlockedLevel, createLevelSession, recordLevel, readProgress, recoverProgress });
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.Campaign = api;
 })(typeof globalThis !== "undefined" ? globalThis : this);
