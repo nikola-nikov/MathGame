@@ -14,7 +14,7 @@ function boot(withAudio=false, options={}){
   Object.defineProperty(card,"innerHTML",{get:()=>html,set:value=>{html=value;buttons=[...value.matchAll(/data-answer="(\d+)"/g)].map(m=>{const b=element();b.dataset.answer=m[1];return b;});steps=Array.from({length:10},element);for(const key of ["#answer-status",".question-mark",".progress-track"])nodes.set(key,element());}});
   card.querySelector=key=>get(key);card.querySelectorAll=key=>key==="[data-answer]"?buttons:steps;
   const form=get("#settings-form");form.elements={min:{value:0},max:{value:0},operation:{value:"+"}};form.querySelector=()=>element();
-  const document={querySelector:get,body:element(),documentElement:element(),createElement:element};
+  const document={addEventListener(){},querySelector:get,body:element(),documentElement:element(),createElement:element};
   const window={Campaign:{...require("../campaign.js"),createLevelSession(...args){if(options.clock)args[2]=options.clock.now;current=require("../campaign.js").createLevelSession(...args);return current;}},confirm:message=>{confirmations.push(message);return options.confirm!==false;},alert:message=>alerts.push(message),MathGame:{...math,submitAnswer(...args){if(options.clock)args[2]=options.clock.now;const result=math.submitAnswer(...args);submissions.push(result);current=result;return result;}},setInterval:()=>1,clearInterval(){},setTimeout(fn,delay){const id=++timeoutId;timers.push({id,fn,delay});return id;},clearTimeout(id){const i=timers.findIndex(t=>t.id===id);if(i>=0)timers.splice(i,1);}};
   if(withAudio)window.AudioContext=class{constructor(){this.state=options.suspended?"suspended":"running";this.currentTime=0;this.destination={};}resume(){this.state="running";return Promise.resolve();}createOscillator(){return {frequency:{setValueAtTime:v=>tones.push(v),exponentialRampToValueAtTime(){}},connect(){},start(){},stop(time){if(time!==undefined)stops.push(time);},disconnect(){}};}createGain(){return {gain:{setValueAtTime(){},linearRampToValueAtTime(){},exponentialRampToValueAtTime(){}},connect(){},disconnect(){}};}};
   vm.runInNewContext(fs.readFileSync(require.resolve("../app.js"),"utf8"),{window,document,localStorage:{getItem:key=>storage.get(key)||null,setItem:(key,value)=>storage.set(key,value),removeItem:key=>{if(options.failReset)throw Error("Storage denied");storage.delete(key);}},FormData:class{get(key){return {min:0,max:0,operation:"+"}[key];}},Date:class extends Date{static now(){return options.clock?options.clock.now:Date.now();}},console});
@@ -90,9 +90,9 @@ test("low-scoring level completion survives the results-to-home route and reload
 
 
 test("home has an accessible podium picture below the play button",()=>{
- const ui=boot(false,{home:true});assert.ok(ui.card.innerHTML.includes('id="start-button">Играя'));
+ const ui=boot(false,{home:true});assert.ok(ui.card.innerHTML.includes('id="start-button">Играй'));
  assert.match(ui.card.innerHTML,/id="rankings-button" aria-label="Класация"[^>]*><img src="assets\/podium.svg"/);
- assert.ok(ui.card.innerHTML.indexOf('id="start-button"')<ui.card.innerHTML.indexOf('id="rankings-button"'));
+ assert.ok(ui.card.innerHTML.indexOf('class="levels-grid"')<ui.card.innerHTML.indexOf('id="rankings-button"'));
 });
 test("the start jingle lasts between two and three seconds and supports a suspended mobile audio context",async()=>{
  const ui=boot(true,{level:true,suspended:true});await Promise.resolve();assert.equal(ui.tones.length,9);
@@ -101,7 +101,7 @@ test("the start jingle lasts between two and three seconds and supports a suspen
 });
 test("each animal button responds with a joke, animation and its own short sound",()=>{
  const ui=boot(true,{home:true});
- for(const animal of ['lion','elephant','dolphin','fox','rabbit','turtle']){
+ for(const animal of ['lion','elephant','parrot','tiger','monkey','turtle']){
   const button=ui.get('[test-animal-'+animal+']');button.dataset.animal=animal;
   const before=ui.tones.length;ui.get('#jungle-animals').listeners.click({target:{closest:()=>button}});
   assert.ok(button.classList.contains('animal-dancing'));assert.ok(ui.get('#animal-joke').textContent.length>10);
@@ -159,7 +159,7 @@ test("confirmed reset clears only game data, cancels transitions and returns to 
  assert.ok(!ui.card.innerHTML.includes('level-passed'));assert.ok(!ui.card.innerHTML.includes('level-passed'));
  assert.ok(ui.card.innerHTML.match(/<button[^>]+data-level="2"[^>]*>/)[0].includes('disabled'));
  assert.equal(ui.get('#settings-form').elements.max.value,10);
- assert.match(ui.card.innerHTML,/id="start-button">Играя<\/button>/);
+ assert.match(ui.card.innerHTML,/id="start-button">Играй<\/button>/);
  const reload=boot(false,{level:true,storage});assert.ok(reload.card.innerHTML.includes('Ниво 1'));
 });
 test("failed storage deletion is explained without preventing a fresh in-memory game",()=>{
@@ -198,7 +198,7 @@ test("first play requires a name, then shows it persistently and preserves separ
  ui.get('#new-player').listeners.click();ui.get('#player-input').value='Боби';ui.get('#player-form').listeners.submit({preventDefault(){}});
  assert.equal(ui.get('#player-name').textContent,'Боби');assert.ok(!ui.card.innerHTML.includes('level-passed'));
  let data=JSON.parse(ui.storage.get('smetni.players.v1'));const iva=data.players.find(p=>p.name==='Ива');assert.ok(iva.progress[1].passed);
- ui.get('#switch-player').listeners.click();ui.get('#player-select').value=iva.id;ui.get('#player-select').listeners.change();ui.get('#player-form').listeners.submit({preventDefault(){}});
+ ui.get('#profile-options').listeners.click({target:{closest:()=>({dataset:{player:iva.id}})}});
  assert.equal(ui.get('#player-name').textContent,'Ива');assert.match(ui.card.innerHTML,/level-passed/);
  const reload=boot(false,{home:true,storage:ui.storage});assert.equal(reload.get('#player-name').textContent,'Ива');
  reload.get('#reset-button').listeners.click();data=JSON.parse(ui.storage.get('smetni.players.v1'));assert.equal(data.players.length,2);assert.deepEqual(data.players.find(p=>p.name==='Ива').progress,{});
@@ -211,7 +211,7 @@ test("cancelling name entry never starts a game and the first player inherits ex
 });
 test("names are displayed as text and escaped in the player picker",()=>{
  const ui=boot(false,{home:true,noProfile:true});ui.get('#new-player').listeners.click();ui.get('#player-input').value='<b>Мая</b>';ui.get('#player-form').listeners.submit({preventDefault(){}});
- assert.equal(ui.get('#player-name').textContent,'<b>Мая</b>');ui.get('#switch-player').listeners.click();assert.ok(ui.get('#player-select').innerHTML.includes('&lt;b&gt;Мая&lt;/b&gt;'));
+ assert.equal(ui.get('#player-name').textContent,'<b>Мая</b>');assert.ok(ui.get('#profile-options').innerHTML.includes('&lt;b&gt;Мая&lt;/b&gt;'));
 });
 test("initial home omits progress counters, level descriptions and completion instructions",()=>{
  const ui=boot(false,{home:true});assert.ok(!ui.card.innerHTML.includes('ПРЕМИНАТИ НИВА'));assert.ok(!ui.card.innerHTML.includes('резултати до'));assert.ok(!ui.card.innerHTML.includes('Завърши 10-те задачи'));
@@ -222,6 +222,33 @@ test("reset affects only the selected player's saved game",()=>{
  const store={activeId:'one',players:[{id:'one',name:'Ана',settings:{min:0,max:10,operation:'+'},progress:{1:{passed:true,points:90}},rankings:[]},{id:'two',name:'Борис',settings:{min:0,max:5,operation:'-'},progress:{1:{passed:true,points:99},2:{passed:true,points:100}},rankings:[]}]};
  const storage=new Map([['smetni.players.v1',JSON.stringify(store)]]);const ui=boot(false,{home:true,storage});ui.get('#reset-button').listeners.click();
  const saved=JSON.parse(storage.get('smetni.players.v1'));assert.deepEqual(saved.players[0].progress,{});assert.equal(saved.players[1].progress[2].points,100);
- ui.get('#switch-player').listeners.click();ui.get('#player-select').value='two';ui.get('#player-form').listeners.submit({preventDefault(){}});
+ ui.get('#profile-options').listeners.click({target:{closest:()=>({dataset:{player:'two'}})}});
  assert.equal(ui.get('#player-name').textContent,'Борис');ui.get('#start-button').listeners.click();assert.ok(ui.card.innerHTML.includes('Ниво 3'));
+});
+
+test("profile deletion preserves other users and selects the remaining profile",()=>{
+ const store={activeId:'one',players:[{id:'one',name:'Ана',settings:{min:0,max:10,operation:'+'},progress:{1:{passed:true,points:90}},rankings:[]},{id:'two',name:'Борис',settings:{min:0,max:5,operation:'-'},progress:{1:{passed:true,points:99}},rankings:[]}]};
+ const ui=boot(false,{level:true,storage:new Map([['smetni.players.v1',JSON.stringify(store)]])});
+ ui.answer(ui.correctAnswer());ui.get('#delete-player').listeners.click();
+ const data=JSON.parse(ui.storage.get('smetni.players.v1'));
+ assert.equal(data.players.length,1);assert.equal(data.activeId,'two');assert.equal(data.players[0].progress[1].points,99);
+ assert.equal(ui.get('#player-name').textContent,'Борис');assert.equal(ui.timers.length,0);
+});
+test("deleting the last profile never transfers its progress to a new player",()=>{
+ const ui=boot(false,{home:true});ui.get('#delete-player').listeners.click();
+ assert.equal(JSON.parse(ui.storage.get('smetni.players.v1')).players.length,0);
+ ui.get('#start-button').listeners.click();assert.equal(ui.get('#player-dialog').open,true);
+ ui.get('#player-input').value='Нов';ui.get('#player-form').listeners.submit({preventDefault(){}});
+ assert.ok(ui.card.innerHTML.includes('Ниво 1'));
+});
+test("cancelled deletion preserves the current game and saved users",()=>{
+ const ui=boot(false,{level:true,confirm:false});const before=ui.storage.get('smetni.players.v1');
+ ui.get('#delete-player').listeners.click();assert.equal(ui.storage.get('smetni.players.v1'),before);ui.answer(ui.correctAnswer());assert.equal(ui.submissions.length,1);
+});
+test("the name picker protects an unfinished game and sound switch mutes audio",()=>{
+ const ui=boot(true,{level:true,confirm:false,storage:new Map([['smetni.players.v1',JSON.stringify({activeId:'a',players:['a','b'].map(id=>({id,name:id,settings:{min:0,max:5,operation:'+'},progress:{},rankings:[]}))})]])});
+ ui.get('#profile-options').listeners.click({target:{closest:()=>({dataset:{player:'b'}})}});
+ assert.equal(ui.get('#player-name').textContent,'a');assert.equal(ui.confirmations.length,1);
+ ui.get('#menu-sound').listeners.click();assert.equal(ui.get('#menu-sound').attributes['aria-checked'],'false');
+ const count=ui.tones.length;ui.answer(ui.correctAnswer());assert.equal(ui.tones.length,count);
 });

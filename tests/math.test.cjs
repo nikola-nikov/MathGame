@@ -171,3 +171,11 @@ test("procedural levels can accept correct answers larger than three digits",()=
  for(let i=0;i<10;i++){const q=session.questions[i];session=submitAnswer(session,String(q.answer),1000*(i+1));}
  assert.equal(getResults(session).correct,10);
 });
+
+test("three-number games award time points from 30 to 90 seconds",()=>{
+ const {getScore}=require("../math.js");
+ for(const [seconds,bonus] of [[0,10],[29,10],[30,10],[35,10],[36,9],[42,8],[60,5],[84,1],[89,1],[90,0],[120,0]]){
+  const session={startedAt:0,finishedAt:seconds*1000,questions:[{third:0}],answers:Array.from({length:10},()=>({correct:true,durationMs:1000}))};
+  assert.equal(getScore(session).speed,bonus,"seconds: "+seconds);
+ }
+});

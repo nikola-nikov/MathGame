@@ -102,9 +102,9 @@
   const REWARDS = [
     { min: 95, name: "Лъв", file: "lion", message: "Лъвски успех! Ти си математически шампион!" },
     { min: 80, name: "Слон", file: "elephant", message: "Слонски напредък! Смяташ чудесно!" },
-    { min: 65, name: "Делфин", file: "dolphin", message: "Браво, делфинче! Продължавай със същия устрем!" },
-    { min: 45, name: "Лисица", file: "fox", message: "Хитро лисиче! Всяка задача те учи на нещо ново!" },
-    { min: 25, name: "Зайче", file: "rabbit", message: "Скок напред! С всяка игра ставаш по-добър!" },
+    { min: 65, name: "Папагал", file: "parrot", message: "Крра! Числата ти дават криле!" },
+    { min: 45, name: "Тигър", file: "tiger", message: "Тигърски скок! Всяка задача те прави по-смел!" },
+    { min: 25, name: "Маймунка", file: "monkey", message: "У-у-а! Още един скок към успеха!" },
     { min: 0, name: "Костенурка", file: "turtle", message: "Стъпка по стъпка! Важното е, че опита!" },
   ];
 
@@ -112,8 +112,11 @@
     const results = getResults(session);
     const accuracy = Math.min(QUESTION_COUNT, results.correct) * 9;
     const complete = session.answers.length === QUESTION_COUNT && session.finishedAt !== null;
-    // Award one time point per remaining three-second band; use the displayed stopwatch.
-    const speed = complete ? Math.max(0, Math.min(10, 10 - Math.floor(Math.max(0, results.elapsedSeconds - 20) / 4))) : 0;
+    // Three-number questions allow 30–90 seconds; two-number questions allow 20–60.
+    const threeNumbers = (session.questions || session.answers).some(question => Number.isInteger(question.third));
+    const fullBonusUntil = threeNumbers ? 30 : 20;
+    const secondsPerPoint = threeNumbers ? 6 : 4;
+    const speed = complete ? Math.max(0, Math.min(10, 10 - Math.floor(Math.max(0, results.elapsedSeconds - fullBonusUntil) / secondsPerPoint))) : 0;
     const points = Math.max(0, Math.min(100, accuracy + speed));
     return { points, accuracy, speed, reward: REWARDS.find(reward => points >= reward.min) };
   }

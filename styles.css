@@ -286,7 +286,7 @@ body[data-screen=rankings] .page-heading{display:none}.ranking-list{flex:1;min-h
 .animal-button img{display:block;width:100%;max-width:64px;height:54px;object-fit:contain;transform-origin:50% 85%}
 .animal-button:hover{background:#dce9d280}.animal-button:active img{transform:scale(.92)}
 .animal-joke{height:16px;line-height:16px;margin:0;font-size:10px;color:#5c7950;white-space:nowrap;text-align:center;max-width:100%;overflow:hidden;text-overflow:ellipsis}
-@media(prefers-reduced-motion:no-preference){.animal-dancing img{animation:animal-bounce 1.3s ease-in-out}.animal-fox.animal-dancing img,.animal-turtle.animal-dancing img{animation:animal-wobble 1.3s ease-in-out}@keyframes animal-bounce{0%,100%{transform:translateY(0) rotate(0)}20%{transform:translateY(-9px) rotate(-12deg)}40%{transform:translateY(0) rotate(10deg) scale(1.08,.94)}65%{transform:translateY(-7px) rotate(10deg)}80%{transform:rotate(-8deg)}}@keyframes animal-wobble{0%,100%{transform:rotate(0)}20%{transform:rotate(-18deg) scale(1.08)}40%{transform:rotate(18deg)}60%{transform:rotate(-12deg) translateY(-4px)}80%{transform:rotate(8deg)}}}
+@media(prefers-reduced-motion:no-preference){.animal-dancing img{animation:animal-bounce 1.3s ease-in-out}.animal-tiger.animal-dancing img,.animal-turtle.animal-dancing img{animation:animal-wobble 1.3s ease-in-out}@keyframes animal-bounce{0%,100%{transform:translateY(0) rotate(0)}20%{transform:translateY(-9px) rotate(-12deg)}40%{transform:translateY(0) rotate(10deg) scale(1.08,.94)}65%{transform:translateY(-7px) rotate(10deg)}80%{transform:rotate(-8deg)}}@keyframes animal-wobble{0%,100%{transform:rotate(0)}20%{transform:rotate(-18deg) scale(1.08)}40%{transform:rotate(18deg)}60%{transform:rotate(-12deg) translateY(-4px)}80%{transform:rotate(8deg)}}}
 @media(prefers-reduced-motion:reduce){.animal-dancing{background:#daeacb}}
 @media(max-height:700px){.home-intro{display:none}.page-heading.jungle-heading{padding-top:3px}.animal-button img{height:47px}.animal-button{min-height:44px}.animal-joke{font-size:9px;height:14px;line-height:14px}.home-actions #start-button{min-height:63px}.home-actions #rankings-button{min-height:48px}.home-actions #rankings-button img{height:40px}}
 @media(max-height:480px) and (orientation:landscape){.page-heading.jungle-heading{flex-direction:row;gap:10px}.animal-parade{width:270px}.animal-button img{height:38px}.animal-joke{max-width:210px;font-size:9px}.home-actions{gap:4px}.home-actions #start-button{min-height:48px}.home-actions #rankings-button{min-height:44px;padding:1px 10px;width:100px}.home-actions #rankings-button img{height:38px}}
@@ -337,3 +337,28 @@ body[data-screen=rankings] .page-heading{display:none}.ranking-list{flex:1;min-h
 #player-dialog::backdrop{background:#243c2870;backdrop-filter:blur(4px)}
 #player-form{display:flex;flex-direction:column;gap:10px}#player-form h2{font-size:24px;margin:0 0 9px}#player-form label{font-size:13px;font-weight:650}#player-form input,#player-form select{width:100%;height:48px;border:1px solid #cbd9bd;border-radius:12px;padding:10px;font:inherit;background:white;color:#35503a}#player-form input:disabled{opacity:.5}.player-dialog-actions{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}#player-error{color:#a13c3c;font-size:12px;margin:0}
 @media(max-width:350px){.site-header{grid-template-columns:minmax(0,1fr) minmax(55px,90px) 44px;gap:6px}.site-header .brand{font-size:15px;gap:5px}.site-header .brand-mark{width:23px;height:23px;font-size:20px}.player-header strong{font-size:12px}}
+
+/* Profile picker, user submenu and accessible switches. */
+.player-header{position:relative;display:block;align-self:center}
+.player-header>summary{display:flex;align-items:center;justify-content:flex-end;gap:6px;min-height:44px;list-style:none;cursor:pointer;border-radius:10px}
+.player-header>summary::-webkit-details-marker,.user-submenu>summary::-webkit-details-marker{display:none}
+.player-header>summary[aria-disabled="true"]{cursor:default}
+.profile-icon{flex:none;width:20px;height:23px;fill:none;stroke:#527748;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.player-header strong{font-size:14px}
+.profile-options{position:absolute;top:47px;right:0;width:190px;max-width:calc(100vw - 30px);max-height:50dvh;overflow:auto;background:#fffffb;border:1px solid #d5e0cb;border-radius:15px;padding:6px;box-shadow:0 10px 25px #2e47252b;z-index:35}
+.profile-options button{width:100%;min-height:44px;display:block;text-align:left;border:0;border-radius:9px;padding:10px;background:transparent;color:#42623f;font:inherit;overflow-wrap:anywhere}
+.profile-options button:hover,.profile-options button[aria-pressed="true"]{background:#eaf2df}
+.player-header:not([open]) .profile-options{display:none}
+.user-submenu>summary{display:flex;align-items:center;justify-content:space-between;min-height:44px;padding:10px 12px;list-style:none;cursor:pointer;border-radius:10px;font-size:14px}
+.user-submenu>summary:after{content:"›";font-size:21px}.user-submenu[open]>summary:after{transform:rotate(90deg)}
+.user-submenu>div{padding-left:12px;border-left:2px solid #dce8d0;margin-left:12px}.user-submenu:not([open])>div{display:none}
+.menu-panel button:disabled{opacity:.45;cursor:default}
+.menu-panel .menu-switch{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.switch-track{width:36px;height:22px;border-radius:20px;background:#c4cbbb;position:relative;flex:none}
+.switch-track:after{content:"";position:absolute;width:16px;height:16px;border-radius:50%;background:white;top:3px;left:3px;box-shadow:0 1px 3px #243b2833}
+[aria-checked="true"] .switch-track{background:#588450}
+[aria-checked="true"] .switch-track:after{left:17px}
+#rankings-button{align-self:center;flex:none;width:106px;min-height:50px;padding:2px 8px;border:1px solid #d9e4cb;border-radius:15px;background:#f5f8ed;display:grid;place-items:center;margin:7px auto 0}
+#rankings-button img{display:block;width:86px;height:44px;object-fit:contain}
+#rankings-button:hover{background:#eaf2dd}
+.player-header>summary:focus-visible,.user-submenu>summary:focus-visible{outline:3px solid #a8c771;outline-offset:2px}
