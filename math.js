@@ -100,12 +100,12 @@
   }
 
   const REWARDS = [
-    { min: 95, name: "Лъв", file: "lion", message: "Лъвски успех! Ти си математически шампион!" },
-    { min: 80, name: "Слон", file: "elephant", message: "Слонски напредък! Смяташ чудесно!" },
-    { min: 65, name: "Папагал", file: "parrot", message: "Крра! Числата ти дават криле!" },
-    { min: 45, name: "Тигър", file: "tiger", message: "Тигърски скок! Всяка задача те прави по-смел!" },
-    { min: 25, name: "Маймунка", file: "monkey", message: "У-у-а! Още един скок към успеха!" },
-    { min: 0, name: "Костенурка", file: "turtle", message: "Стъпка по стъпка! Важното е, че опита!" },
+    { min: 95, name: "Лъв", file: "lion", message: "Гладен съм за победи!" },
+    { min: 80, name: "Слон", file: "elephant", message: "Помня всички верни отговори." },
+    { min: 65, name: "Папагал", file: "parrot", message: "Повтарям и научавам.." },
+    { min: 45, name: "Тигър", file: "tiger", message: "Решението няма да ми избяга.." },
+    { min: 25, name: "Маймунка", file: "monkey", message: "Математиката е игра!" },
+    { min: 0, name: "Костенурка", file: "turtle", message: "Напредвам към верния отговор." },
   ];
 
   function getScore(session) {

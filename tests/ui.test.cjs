@@ -105,7 +105,7 @@ test("each animal button responds with a joke, animation and its own short sound
   const button=ui.get('[test-animal-'+animal+']');button.dataset.animal=animal;
   const before=ui.tones.length;ui.get('#jungle-animals').listeners.click({target:{closest:()=>button}});
   assert.ok(button.classList.contains('animal-dancing'));assert.ok(ui.get('#animal-joke').textContent.length>10);
-  assert.ok(ui.tones.length>before);ui.next();assert.ok(!button.classList.contains('animal-dancing'));
+  assert.ok(ui.tones.length>before);assert.equal(ui.get('#animal-joke').textContent,math.REWARDS.find(r=>r.file===animal).message);assert.equal(ui.timers[0].delay,3000);ui.next();assert.ok(!button.classList.contains('animal-dancing'));assert.equal(ui.get('#animal-joke').textContent,'');
  }
 });
 
@@ -270,4 +270,23 @@ test("custom game restart retains its selected settings",()=>{
  assert.equal(ui.timers.length,0);assert.match(ui.card.innerHTML,/Рестарт на играта/);
  ui.answer(0);assert.equal(ui.submissions.at(-1).answers.length,1);
  assert.equal(ui.submissions.at(-1).settings.max,0);
+});
+
+test("every earned animal displays its matching slogan on the final screen",()=>{
+ for(const correct of [10,8,7,5,3,0]){
+  const ui=boot(false,{level:true});
+  for(let i=0;i<10;i++){ui.answer(i<correct?ui.correctAnswer():Number(ui.buttons().find(b=>Number(b.dataset.answer)!==ui.correctAnswer()).dataset.answer));ui.next();}
+  const reward=math.REWARDS.find(r=>correct*9+10>=r.min);
+  assert.ok(ui.card.innerHTML.includes('<p class="earned-slogan">'+reward.message+'</p>'));
+ }
+});
+test("a second animal replaces the slogan and restarts its three-second timeout",()=>{
+ const ui=boot(false,{home:true});
+ for(const animal of ['lion','turtle']){
+  const button=ui.get('[slogan-'+animal+']');button.dataset.animal=animal;
+  ui.get('#jungle-animals').listeners.click({target:{closest:()=>button}});
+ }
+ assert.equal(ui.timers.length,1);assert.equal(ui.timers[0].delay,3000);
+ assert.equal(ui.get('#animal-joke').textContent,'Напредвам към верния отговор.');
+ ui.next();assert.equal(ui.get('#animal-joke').textContent,'');
 });

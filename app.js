@@ -385,7 +385,7 @@ function renderRankings(){document.body.dataset.screen='rankings';phase='ranking
     const score = getScore(session);
     const results = getResults(session);
     playJungleSound(score.reward.file === "lion" ? "success" : "finish");
-    card.innerHTML = `${score.reward.file === "lion" ? confettiMarkup() : ""}<section class="reward-screen" aria-labelledby="results-title"><img class="earned-animal" src="assets/${score.reward.file}.svg" alt="${score.reward.name}" width="240" height="210"><p class="earned-name">${score.reward.name}</p><div class="score-breakdown"><p>${results.correct}/${QUESTION_COUNT} отговора <strong>— ${score.accuracy} точки</strong></p><p>${results.elapsedSeconds} секунди <strong>— ${score.speed} точки</strong></p></div><h2 class="earned-points" id="results-title" tabindex="-1"><span class="total-caption">ОБЩО</span>${score.points}<span>ТОЧКИ</span></h2></section>`;
+    card.innerHTML = `${score.reward.file === "lion" ? confettiMarkup() : ""}<section class="reward-screen" aria-labelledby="results-title"><img class="earned-animal" src="assets/${score.reward.file}.svg" alt="${score.reward.name}" width="240" height="210"><p class="earned-name">${score.reward.name}</p><p class="earned-slogan">${score.reward.message}</p><div class="score-breakdown"><p>${results.correct}/${QUESTION_COUNT} отговора <strong>— ${score.accuracy} точки</strong></p><p>${results.elapsedSeconds} секунди <strong>— ${score.speed} точки</strong></p></div><h2 class="earned-points" id="results-title" tabindex="-1"><span class="total-caption">ОБЩО</span>${score.points}<span>ТОЧКИ</span></h2></section>`;
     document.querySelector("#results-title").focus();
     resultTimeout = window.setTimeout(() => { resultTimeout = null; finishResults(); }, 4000);
   }
@@ -499,14 +499,7 @@ function renderRankings(){document.body.dataset.screen='rankings';phase='ranking
     const manifest = document.createElement("link"); manifest.rel="manifest"; manifest.href="manifest.webmanifest"; document.head.append(manifest);
   }
   document.querySelector(".brand").addEventListener("click",event=>{event.preventDefault();document.querySelector("#home-button").click();});
-  const animalLines = {
-    lion: "Лъвът: Ррр… кой скри моите числа?",
-    elephant: "Слонът: С хобот смятам по-добре!",
-    parrot: "Папагалът: Крра! Повтарям само верните отговори!",
-    tiger: "Тигърът: Ррр! Числата не могат да ми избягат!",
-    monkey: "Маймунката: У-у-а! Банан плюс банан — обяд!",
-    turtle: "Костенурката: Бавно, славно… и с усмивка!"
-  };
+  const animalLines = Object.fromEntries(REWARDS.map(reward => [reward.file, reward.message]));
   let dancingAnimal = null, animalTimeout = null;
   document.querySelector("#jungle-animals").addEventListener("click", event => {
     const button = event.target.closest("[data-animal]");
@@ -519,7 +512,12 @@ function renderRankings(){document.body.dataset.screen='rankings';phase='ranking
     dancingAnimal = button;
     document.querySelector("#animal-joke").textContent = animalLines[button.dataset.animal];
     playJungleSound(button.dataset.animal);
-    animalTimeout = window.setTimeout(() => { button.classList.remove("animal-dancing"); dancingAnimal = null; animalTimeout = null; }, 1400);
+    animalTimeout = window.setTimeout(() => {
+      button.classList.remove("animal-dancing");
+      document.querySelector("#animal-joke").textContent = "";
+      dancingAnimal = null;
+      animalTimeout = null;
+    }, 3000);
   });
   document.querySelector("#profile-toggle").addEventListener("click",event=>{
     if(players.length < 2) event.preventDefault();

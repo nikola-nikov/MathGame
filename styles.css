@@ -369,26 +369,33 @@ body[data-screen=rankings] .page-heading{display:none}.ranking-list{flex:1;min-h
 @media(max-height:600px){.quiz-footer{padding-bottom:6px}.question-body{justify-content:flex-start;overflow-y:auto;overscroll-behavior:contain}.question-body .answer-choices{flex-shrink:0}}
 
 /* Playful lettering with Cyrillic-capable system fonts; works offline. */
-.site-header{height:76px;min-height:76px}
+.site-header{height:92px;min-height:92px}
 .site-header .brand{gap:10px;letter-spacing:.3px;font-family:"Comic Sans MS","Chalkboard SE","Marker Felt","Trebuchet MS",sans-serif;font-weight:900;line-height:1.05;text-transform:uppercase}
-.site-header .brand-mark{width:40px;height:40px}
+.site-header .brand-mark{width:80px;height:80px}
 .site-header .brand>.brand-title{display:flex;flex-direction:column;max-width:none;min-width:0;font-size:clamp(18px,3.5vw,23px);color:#397758;text-shadow:0 2px 0 #dce8cb}
-.brand-title>span:last-child{font-size:1.3em;letter-spacing:1.8px;color:#64843c}
+.brand-title>span:last-child{font-size:.85em;letter-spacing:1px;color:#64843c}
 @media(max-width:540px){
-  .site-header{height:108px;min-height:108px;grid-template-columns:minmax(0,1fr) 44px;grid-template-rows:58px 44px;gap:0 8px;padding-bottom:6px}
-  .site-header .brand{grid-column:1/-1;justify-self:center;gap:10px}
-  .site-header .brand>.brand-title{font-size:21px}
-  .site-header .brand-mark{width:42px;height:42px}
-  .player-header{grid-column:1;justify-self:start;width:min(220px,100%)}
-  .player-header>summary{justify-content:flex-start}
-  .profile-options{left:0;right:auto}
-  .game-menu{grid-column:2}
+  .site-header{height:94px;min-height:94px;grid-template-columns:minmax(0,1fr) clamp(50px,16vw,86px) 44px;grid-template-rows:auto;gap:6px;padding-bottom:0}
+  .site-header .brand{grid-column:1;justify-self:start;gap:5px;letter-spacing:-.4px}
+  .site-header .brand>.brand-title{font-size:clamp(12px,3.6vw,19px);white-space:nowrap}
+  .site-header .brand-mark{width:84px;height:84px}
+  .player-header{grid-column:2;justify-self:end;width:100%;min-width:0}
+  .player-header>summary{justify-content:flex-end;gap:4px}
+  .player-header strong{font-size:12px;min-width:0}
+  .profile-icon{width:17px;height:20px}
+  .profile-options{left:auto;right:0}
+  .game-menu{grid-column:3}
 }
 @media(max-height:480px) and (orientation:landscape){
-  .site-header{height:58px;min-height:58px;grid-template-columns:minmax(0,1fr) minmax(65px,120px) 44px;grid-template-rows:auto;padding-bottom:0;gap:8px}
+  .site-header{height:68px;min-height:68px;grid-template-columns:minmax(0,1fr) minmax(65px,120px) 44px;grid-template-rows:auto;padding-bottom:0;gap:8px}
   .site-header .brand{grid-column:1;justify-self:start;gap:6px}
   .site-header .brand>.brand-title{font-size:16px}
-  .site-header .brand-mark{width:30px;height:30px}
+  .site-header .brand-mark{width:60px;height:60px}
   .player-header{grid-column:2;width:100%}
   .game-menu{grid-column:3}
 }
+
+/* Keep the whole animal slogan readable on a small screen. */
+.animal-joke{height:30px;line-height:15px;white-space:normal;font-size:12px;max-width:100%;padding:0 5px;flex:none;overflow:visible}
+.earned-slogan{flex:none;max-width:340px;margin:0;font-size:clamp(13px,3.8vw,17px);line-height:1.35;color:#64834e;text-align:center}
+@media(max-height:480px) and (orientation:landscape){.animal-joke{height:30px;max-width:230px;font-size:11px}.reward-screen{grid-template-rows:auto auto auto auto}.reward-screen .earned-animal{grid-row:1/5}.earned-slogan{grid-column:2;font-size:13px}}
