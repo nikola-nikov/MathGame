@@ -15,7 +15,7 @@ function boot(withAudio=false, options={}){
   card.querySelector=key=>get(key);card.querySelectorAll=key=>key==="[data-answer]"?buttons:steps;
   const form=get("#settings-form");form.elements={min:{value:0},max:{value:0},operation:{value:"+"}};form.querySelector=()=>element();
   const document={addEventListener(){},querySelector:get,body:element(),documentElement:element(),createElement:element};
-  const window={Campaign:{...require("../campaign.js"),createLevelSession(...args){if(options.clock)args[2]=options.clock.now;current=require("../campaign.js").createLevelSession(...args);return current;}},confirm:message=>{confirmations.push(message);return options.confirm!==false;},alert:message=>alerts.push(message),MathGame:{...math,submitAnswer(...args){if(options.clock)args[2]=options.clock.now;const result=math.submitAnswer(...args);submissions.push(result);current=result;return result;}},setInterval:()=>1,clearInterval(){},setTimeout(fn,delay){const id=++timeoutId;timers.push({id,fn,delay});return id;},clearTimeout(id){const i=timers.findIndex(t=>t.id===id);if(i>=0)timers.splice(i,1);}};
+  const window={Campaign:{...require("../campaign.js"),createLevelSession(...args){if(options.clock)args[2]=options.clock.now;current=require("../campaign.js").createLevelSession(...args);return current;}},confirm:message=>{confirmations.push(message);return options.confirm!==false;},alert:message=>alerts.push(message),MathGame:{...math,getResults(session,now){return math.getResults(session,options.clock?options.clock.now:now);},submitAnswer(...args){if(options.clock)args[2]=options.clock.now;const result=math.submitAnswer(...args);submissions.push(result);current=result;return result;}},setInterval:()=>1,clearInterval(){},setTimeout(fn,delay){const id=++timeoutId;timers.push({id,fn,delay});return id;},clearTimeout(id){const i=timers.findIndex(t=>t.id===id);if(i>=0)timers.splice(i,1);}};
   if(withAudio)window.AudioContext=class{constructor(){this.state=options.suspended?"suspended":"running";this.currentTime=0;this.destination={};}resume(){this.state="running";return Promise.resolve();}createOscillator(){return {frequency:{setValueAtTime:v=>tones.push(v),exponentialRampToValueAtTime(){}},connect(){},start(){},stop(time){if(time!==undefined)stops.push(time);},disconnect(){}};}createGain(){return {gain:{setValueAtTime(){},linearRampToValueAtTime(){},exponentialRampToValueAtTime(){}},connect(){},disconnect(){}};}};
   vm.runInNewContext(fs.readFileSync(require.resolve("../app.js"),"utf8"),{window,document,localStorage:{getItem:key=>storage.get(key)||null,setItem:(key,value)=>storage.set(key,value),removeItem:key=>{if(options.failReset)throw Error("Storage denied");storage.delete(key);}},FormData:class{get(key){return {min:0,max:0,operation:"+"}[key];}},Date:class extends Date{static now(){return options.clock?options.clock.now:Date.now();}},console});
   if(options.home){}
@@ -251,4 +251,23 @@ test("the name picker protects an unfinished game and sound switch mutes audio",
  assert.equal(ui.get('#player-name').textContent,'a');assert.equal(ui.confirmations.length,1);
  ui.get('#menu-sound').listeners.click();assert.equal(ui.get('#menu-sound').attributes['aria-checked'],'false');
  const count=ui.tones.length;ui.answer(ui.correctAnswer());assert.equal(ui.tones.length,count);
+});
+
+test("restarting a level clears answers, elapsed time and pending feedback without changing saved progress",()=>{
+ const clock={now:1000};const ui=boot(false,{level:true,clock});
+ const before=ui.storage.get('smetni.players.v1');
+ assert.match(ui.card.innerHTML,/id="restart-level"/);assert.match(ui.card.innerHTML,/#icon-refresh/);
+ clock.now=6000;ui.answer(ui.correctAnswer());assert.equal(ui.timers.length,1);
+ clock.now=12000;ui.get('#restart-level').listeners.click();
+ assert.equal(ui.timers.length,0);assert.ok(!ui.card.classList.contains('flash-correct'));
+ assert.ok(ui.card.innerHTML.includes('Ниво 1 · 1 / 10'));assert.ok(ui.card.innerHTML.includes('>00:00</span>'));
+ assert.equal(ui.storage.get('smetni.players.v1'),before);
+ ui.answer(ui.correctAnswer());assert.equal(ui.submissions.at(-1).answers.length,1);
+ assert.equal(ui.submissions.at(-1).levelId,1);assert.equal(ui.submissions.at(-1).startedAt,12000);
+});
+test("custom game restart retains its selected settings",()=>{
+ const ui=boot();ui.answer(0);ui.get('#restart-level').listeners.click();
+ assert.equal(ui.timers.length,0);assert.match(ui.card.innerHTML,/Рестарт на играта/);
+ ui.answer(0);assert.equal(ui.submissions.at(-1).answers.length,1);
+ assert.equal(ui.submissions.at(-1).settings.max,0);
 });

@@ -217,8 +217,12 @@ function renderRankings(){document.body.dataset.screen='rankings';phase='ranking
         <p class="choice-prompt" id="choice-label">Избери верния отговор</p>
         <div class="answer-choices" role="group" aria-labelledby="question-equation choice-label">${generateChoices(question).map((value, i) => `<button class="answer-choice" type="button" data-answer="${value}"><span class="choice-number" aria-hidden="true">${i + 1}</span>${value}</button>`).join("")}</div>
         <p class="answer-status" id="answer-status" role="status" aria-live="polite" aria-atomic="true"></p>
-      </div>`;
+      </div><div class="quiz-footer"><button class="secondary-button restart-button" type="button" id="restart-level">${icon("refresh")}<span>${session.levelId ? "Рестарт на нивото" : "Рестарт на играта"}</span></button></div>`;
     card.querySelectorAll("[data-answer]").forEach(button => button.addEventListener("click", () => handleAnswer(button.dataset.answer)));
+    card.querySelector("#restart-level").addEventListener("click", () => {
+      if (phase !== "question" && phase !== "feedback") return;
+      startSession(session.settings, session.levelId || null);
+    });
   }
 
   function handleAnswer(value) {

@@ -363,3 +363,7 @@ body[data-screen=rankings] .page-heading{display:none}.ranking-list{flex:1;min-h
 #rankings-button:hover{background:#eaf2dd}
 .player-header>summary:focus-visible,.user-submenu>summary:focus-visible{outline:3px solid #a8c771;outline-offset:2px}
 .site-header .brand-mark{display:block;object-fit:contain;border-radius:8px;background:transparent;box-shadow:none}
+.quiz-footer{flex:none;display:flex;justify-content:center;padding:0 14px 10px}
+.restart-button{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:8px 16px;border-color:#d7e4c7;background:#f2f7eb;color:#52734a;font-size:13px;touch-action:manipulation}
+.restart-button .icon{width:19px;height:19px}
+@media(max-height:600px){.quiz-footer{padding-bottom:6px}.question-body{justify-content:flex-start;overflow-y:auto;overscroll-behavior:contain}.question-body .answer-choices{flex-shrink:0}}
