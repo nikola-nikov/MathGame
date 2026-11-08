@@ -290,3 +290,17 @@ body[data-screen=rankings] .page-heading{display:none}.ranking-list{flex:1;min-h
 @media(prefers-reduced-motion:reduce){.animal-dancing{background:#daeacb}}
 @media(max-height:700px){.home-intro{display:none}.page-heading.jungle-heading{padding-top:3px}.animal-button img{height:47px}.animal-button{min-height:44px}.animal-joke{font-size:9px;height:14px;line-height:14px}.home-actions #start-button{min-height:63px}.home-actions #rankings-button{min-height:48px}.home-actions #rankings-button img{height:40px}}
 @media(max-height:480px) and (orientation:landscape){.page-heading.jungle-heading{flex-direction:row;gap:10px}.animal-parade{width:270px}.animal-button img{height:38px}.animal-joke{max-width:210px;font-size:9px}.home-actions{gap:4px}.home-actions #start-button{min-height:48px}.home-actions #rankings-button{min-height:44px;padding:1px 10px;width:100px}.home-actions #rankings-button img{height:38px}}
+
+/* A short reward moment, followed by the animal landing on its level. */
+.reward-screen{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;padding:22px;text-align:center;background:radial-gradient(ellipse at center,#f0f6dc 0%,#fffffb 70%)}
+.earned-animal{width:clamp(120px,40vw,230px);height:auto;max-height:38dvh;object-fit:contain;filter:drop-shadow(0 8px 12px #4b70351c)}
+.earned-points{font-size:clamp(50px,15vw,82px);font-weight:850;color:#47763d;line-height:1;letter-spacing:-2px;margin:0}
+.earned-points span{display:block;font-size:15px;line-height:1.5;letter-spacing:2px;font-weight:650;margin-top:7px;color:#8b9b6c}
+.earned-name{font-size:clamp(24px,6vw,34px);font-weight:750;color:#4c6645;margin:0}
+.reward-arrival{position:relative;z-index:1}
+@media(prefers-reduced-motion:no-preference){.earned-animal{animation:reward-reveal .5s cubic-bezier(.2,.8,.2,1.2) both}.reward-arrival .level-animal{animation:animal-landing 1s cubic-bezier(.2,.8,.25,1) both}.reward-arrival{animation:level-awarded 1.3s ease-out both}@keyframes reward-reveal{from{opacity:0;transform:scale(.65) rotate(-8deg)}to{opacity:1;transform:scale(1) rotate(0)}}@keyframes animal-landing{0%{opacity:0;transform:translateY(-36px) scale(1.6) rotate(-12deg)}45%{opacity:1;transform:translateY(4px) scale(.9,1.05)}70%{transform:translateY(-4px) scale(1.08,.95) rotate(5deg)}100%{opacity:1;transform:translateY(0) scale(1) rotate(0)}}@keyframes level-awarded{0%,100%{box-shadow:0 0 0 0 #e7bd4b00}40%{box-shadow:0 0 0 4px #e7bd4b88;background:#f9edc2}}}
+@media(prefers-reduced-motion:reduce){.reward-arrival{outline:3px solid #d9b653;outline-offset:-3px}}
+@media(max-height:480px) and (orientation:landscape){.reward-screen{display:grid;grid-template-columns:auto auto;grid-template-rows:auto auto;align-content:center;justify-content:center;column-gap:30px;row-gap:8px;padding:10px}.earned-animal{grid-row:1/3;max-height:52dvh;width:180px}.earned-points{font-size:54px}.earned-name{font-size:23px}}
+
+/* Five levels per row; new rows appear only when reached. */
+.levels-grid{grid-template-columns:repeat(5,minmax(0,1fr))}

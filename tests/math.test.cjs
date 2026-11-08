@@ -104,7 +104,7 @@ test("answers are scored once, 10th answer stops the clock, later result views k
 
 test("empty, decimal and malformed answers do not consume a question", () => {
   const session = createSession({ min: 0, max: 0, operation: "-" }, 0);
-  for (const value of ["", " ", "1.5", "-1", "1e2", "abc", "1000"]) {
+  for (const value of ["", " ", "1.5", "-1", "1e2", "abc", "9007199254740992"]) {
     assert.throws(() => submitAnswer(session, value));
   }
   assert.equal(session.answers.length, 0);
@@ -130,19 +130,31 @@ test("four choices are unique, nonnegative and contain exactly one correct answe
     assert.ok(choices.every(n=>Number.isInteger(n)&&n>=0));
   }
 });
-test("accuracy dominates speed, scores cover 0 to 100, and all rewards have a category", () => {
+test("correct answers contribute 90 points and the total stopwatch contributes up to 10", () => {
   const {getScore,REWARDS}=require("../math.js");
-  const make=(count,time)=>({answers:Array.from({length:10},(_,i)=>({correct:i<count,durationMs:time}))});
-  assert.equal(getScore(make(0,0)).points,0);
-  assert.equal(getScore(make(10,1000)).points,100);
-  assert.equal(getScore(make(10,20000)).points,95);
-  assert.ok(getScore(make(9,20000)).points>getScore(make(8,0)).points);
-  assert.equal(getScore(make(10,1000)).reward.file,"lion");
-  assert.equal(getScore(make(9,1000)).reward.file,"elephant");
-  for(let correct=0;correct<=10;correct++) for(const time of [0,5000,10000,20000,60000]) {
-    const score=getScore(make(correct,time));assert.ok(score.points>=0&&score.points<=100);assert.ok(score.reward);
+  const make=(count,seconds)=>({startedAt:1000,finishedAt:1000+seconds*1000,answers:Array.from({length:10},(_,i)=>({correct:i<count,durationMs:1000}))});
+  assert.equal(getScore(make(10,20)).points,100);
+  assert.equal(getScore(make(10,60)).points,90);
+  assert.equal(getScore(make(9,60)).points,81);
+  assert.equal(getScore(make(8,45)).points,77);
+  assert.equal(getScore(make(0,60)).points,0);
+  assert.equal(getScore(make(0,20)).points,10);
+  for(const [seconds,bonus] of [[0,10],[29,10],[30,10],[32,10],[32.999,10],[33,9],[35,9],[36,8],[39,7],[42,6],[45,5],[48,4],[51,3],[54,2],[57,1],[59.999,1],[60,0],[61,0],[120,0]]) {
+    const score=getScore(make(10,seconds));assert.equal(score.accuracy,90);assert.equal(score.speed,bonus,"seconds: "+seconds);assert.equal(score.points,90+bonus);
+  }
+  assert.equal(getScore(make(10,20)).reward.file,"lion");
+  assert.equal(getScore(make(10,60)).reward.file,"elephant");
+  for(let correct=0;correct<=10;correct++) for(const seconds of [0,30,33,45,59,60,120]) {
+    const score=getScore(make(correct,seconds));assert.ok(Number.isInteger(score.points));assert.ok(score.points>=0&&score.points<=100);assert.ok(score.reward);
   }
   for(let points=0;points<=100;points++)assert.ok(REWARDS.find(r=>points>=r.min));
+});
+test("speed bonus uses the full frozen stopwatch, including automatic feedback pauses",()=>{
+ const {getScore}=require("../math.js");
+ const s={startedAt:0,finishedAt:45000,answers:Array.from({length:10},()=>({correct:true,durationMs:1000}))};
+ assert.equal(getScore(s).speed,5);assert.equal(getScore(s).points,95);
+ const partial={...s,finishedAt:null,answers:s.answers.slice(0,5)};
+ assert.equal(getScore(partial).speed,0);assert.equal(getScore(partial).accuracy,45);
 });
 test("feedback reading time is excluded from the next answer duration", () => {
   let session=createSession({min:0,max:0,operation:"+"},0);
@@ -150,4 +162,12 @@ test("feedback reading time is excluded from the next answer duration", () => {
   session.questionStartedAt=60000;
   session=submitAnswer(session,"0",62000);
   assert.equal(session.answers[0].durationMs,3000);assert.equal(session.answers[1].durationMs,2000);
+});
+
+
+test("procedural levels can accept correct answers larger than three digits",()=>{
+ const {createLevelSession}=require("../campaign.js");const progress={};for(let i=1;i<5000;i++)progress[i]={passed:true,points:90};
+ let session=createLevelSession(5000,progress,0,()=>0.999);
+ for(let i=0;i<10;i++){const q=session.questions[i];session=submitAnswer(session,String(q.answer),1000*(i+1));}
+ assert.equal(getResults(session).correct,10);
 });

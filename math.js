@@ -72,7 +72,7 @@
       throw new Error("Тази игра вече е завършена.");
     }
     const value = String(input).trim();
-    if (!/^\d{1,3}$/.test(value)) {
+    if (!/^\d+$/.test(value) || !Number.isSafeInteger(Number(value))) {
       throw new Error("Напиши цяло число, например 7.");
     }
     const question = session.questions[session.answers.length];
@@ -109,14 +109,13 @@
   ];
 
   function getScore(session) {
-    let accuracy = 0, speed = 0;
-    for (const answer of session.answers) {
-      if (!answer.correct) continue;
-      accuracy += 9.5;
-      speed += 0.5 * Math.max(0, Math.min(1, (20000 - answer.durationMs) / 15000));
-    }
-    const points = Math.max(0, Math.min(100, Math.round(accuracy + speed)));
-    return { points, accuracy: Math.round(accuracy * 10) / 10, speed: Math.round(speed * 10) / 10, reward: REWARDS.find(reward => points >= reward.min) };
+    const results = getResults(session);
+    const accuracy = Math.min(QUESTION_COUNT, results.correct) * 9;
+    const complete = session.answers.length === QUESTION_COUNT && session.finishedAt !== null;
+    // Award one time point per remaining three-second band; use the displayed stopwatch.
+    const speed = complete ? Math.max(0, Math.min(10, 10 - Math.floor(Math.max(0, results.elapsedSeconds - 30) / 3))) : 0;
+    const points = Math.max(0, Math.min(100, accuracy + speed));
+    return { points, accuracy, speed, reward: REWARDS.find(reward => points >= reward.min) };
   }
 
   const api = Object.freeze({ QUESTION_COUNT, generateChoices, getScore, REWARDS, validateSettings, generateQuestions, createSession, submitAnswer, getResults });

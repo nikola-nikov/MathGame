@@ -2,7 +2,7 @@
   "use strict";
 
   const { QUESTION_COUNT, generateChoices, getScore, REWARDS, validateSettings, createSession, submitAnswer, getResults } = window.MathGame;
-  const { LEVELS, unlockedLevel, createLevelSession, recordLevel, readProgress, recoverProgress } = window.Campaign;
+  const { getLevel, visibleLevels, unlockedLevel, createLevelSession, recordLevel, readProgress, recoverProgress } = window.Campaign;
   const card = document.querySelector("#game-card");
   const settingsForm = document.querySelector("#settings-form");
   const settingsFields = document.querySelector("#settings-fields");
@@ -14,6 +14,7 @@
   let timerId = null;
   let phase = "welcome";
   let feedbackTimeout = null;
+  let resultTimeout = null;
   let audioContext = null;
   let soundEnabled = true;
   let jungleVoices = [];
@@ -30,7 +31,7 @@
   }
   progress = readProgress(readStorage("smetni.progress.v1", {}));
   const savedRankings = readStorage("smetni.rankings.v1", []);
-  rankings = Array.isArray(savedRankings) ? savedRankings.filter(r => r && Number.isInteger(r.points) && r.points >= 0 && r.points <= 100 && Number.isInteger(r.correct) && r.correct >= 0 && r.correct <= 10 && Number.isInteger(r.seconds) && r.seconds >= 0 && ["+", "-", "mixed"].includes(r.operation) && (r.levelId === null || Number.isInteger(r.levelId) && r.levelId >= 1 && r.levelId <= 20)).slice(0, 50) : [];
+  rankings = Array.isArray(savedRankings) ? savedRankings.filter(r => r && Number.isInteger(r.points) && r.points >= 0 && r.points <= 100 && Number.isInteger(r.correct) && r.correct >= 0 && r.correct <= 10 && Number.isInteger(r.seconds) && r.seconds >= 0 && ["+", "-", "mixed"].includes(r.operation) && (r.levelId === null || Number.isSafeInteger(r.levelId) && r.levelId >= 1)).slice(0, 50) : [];
   progress = recoverProgress(progress, rankings);
   selectedLevel = unlockedLevel(progress);
 
@@ -56,6 +57,8 @@
   }
 
   function cancelFeedback() {
+    if (resultTimeout !== null) window.clearTimeout(resultTimeout);
+    resultTimeout = null;
     if (feedbackTimeout !== null) window.clearTimeout(feedbackTimeout);
     feedbackTimeout = null;
     card.classList.remove("flash-correct", "flash-incorrect");
@@ -92,13 +95,13 @@
       : "Всяка задача е малка стъпка напред.";
   }
 
-function renderWelcome(focus = false) {
+function renderWelcome(focus = false, awardedLevel = null) {
  document.body.dataset.screen = homeMode === "levels" ? "levels" : "custom";
  document.body.classList.remove("is-playing");
  phase='welcome';stopTimer();cancelFeedback();setLocked(false);homeControls.hidden=false;settingsPanel.hidden=homeMode!=='custom';
  document.querySelector('#mode-levels').setAttribute('aria-pressed',String(homeMode==='levels'));document.querySelector('#mode-custom').setAttribute('aria-pressed',String(homeMode==='custom'));
- const next=unlockedLevel(progress), completed=LEVELS.filter(l=>progress[l.id]?.passed).length;if(selectedLevel>next)selectedLevel=next;const level=LEVELS[selectedLevel-1];
- card.innerHTML=`<div class="home-body"><div class="home-intro"><div><p class="eyebrow">${homeMode==='levels'?completed+' ОТ 20 ПРЕМИНАТИ НИВА':'ТИ ИЗБИРАШ ЗАДАЧИТЕ'}</p><h2>${homeMode==='levels'?'Една стъпка по-нагоре!':'Да потренираме!'}</h2></div><img src="assets/lion.svg" alt="" width="82" height="72"></div><div class="home-actions"><button class="primary-button" type="button" id="start-button">Играя ${icon('arrow')}</button><button class="secondary-button" type="button" id="rankings-button" aria-label="Класация" title="Класация"><img src="assets/podium.svg" alt="" width="92" height="48"></button></div>${homeMode==='levels'?`<p class="level-summary">Ниво ${level.id} · резултати до ${level.max} · ${10-level.subtractionCount} събирания и ${level.subtractionCount} изваждания</p><div class="levels-grid" role="group" aria-label="Избери ниво">${LEVELS.map(item=>{const record=progress[item.id],locked=item.id>next,reward=record?REWARDS.find(r=>record.points>=r.min):null;return `<button type="button" class="level-tile ${record?.passed?'level-passed':''} ${item.id===selectedLevel?'level-selected':''}" data-level="${item.id}" aria-pressed="${item.id===selectedLevel}" aria-label="Ниво ${item.id}, ${locked?'заключено':record?.passed?'преминато, '+record.points+' точки, '+reward.name:'достъпно'}" ${locked?'disabled':''}><strong>${item.id}</strong>${record?.passed?`<img class="level-animal" src="assets/${reward.file}.svg" alt="Най-добро животно: ${reward.name}" title="${reward.name} · ${record.points} точки" width="44" height="38">`:`<span class="level-state">${locked?'🔒':'Играй'}</span>`}</button>`;}).join('')}</div><p class="home-help">Завърши 10-те задачи, за да отключиш следващото ниво. Зелените нива могат да се играят отново за по-добро животно.</p>`:'<p class="home-help">10 задачи според твоите настройки. Избери числата и операциите по-горе.</p>'}<p class="storage-note">${storageAvailable?'Напредъкът и класацията се пазят на това устройство.':'Запазването е недостъпно. Напредъкът остава само до затваряне на страницата.'}</p></div>`;
+ const next=unlockedLevel(progress), completed=Object.values(progress).filter(record=>record.passed).length;if(selectedLevel>next)selectedLevel=next;const level=getLevel(selectedLevel);
+ card.innerHTML=`<div class="home-body"><div class="home-intro"><div><p class="eyebrow">${homeMode==='levels'?completed+' ПРЕМИНАТИ НИВА':'ТИ ИЗБИРАШ ЗАДАЧИТЕ'}</p><h2>${homeMode==='levels'?'Една стъпка по-нагоре!':'Да потренираме!'}</h2></div><img src="assets/lion.svg" alt="" width="82" height="72"></div><div class="home-actions"><button class="primary-button" type="button" id="start-button">Играя ${icon('arrow')}</button><button class="secondary-button" type="button" id="rankings-button" aria-label="Класация" title="Класация"><img src="assets/podium.svg" alt="" width="92" height="48"></button></div>${homeMode==='levels'?`<p class="level-summary">Ниво ${level.id} · резултати до ${level.max} · ${10-level.subtractionCount} събирания и ${level.subtractionCount} изваждания</p><div class="levels-grid" role="group" aria-label="Избери ниво">${visibleLevels(progress).map(item=>{const record=progress[item.id],locked=item.id>next,reward=record?REWARDS.find(r=>record.points>=r.min):null;return `<button type="button" class="level-tile${item.id === awardedLevel ? " reward-arrival" : ""} ${record?.passed?'level-passed':''} ${item.id===selectedLevel?'level-selected':''}" data-level="${item.id}" aria-pressed="${item.id===selectedLevel}" aria-label="Ниво ${item.id}, ${locked?'заключено':record?.passed?'преминато, '+record.points+' точки, '+reward.name:'достъпно'}" ${locked?'disabled':''}><strong>${item.id}</strong>${record?.passed?`<img class="level-animal" src="assets/${reward.file}.svg" alt="Най-добро животно: ${reward.name}" title="${reward.name} · ${record.points} точки" width="44" height="38">`:`<span class="level-state">${locked?'🔒':'Играй'}</span>`}</button>`;}).join('')}</div><p class="home-help">Завърши 10-те задачи, за да отключиш следващото ниво. Зелените нива могат да се играят отново за по-добро животно.</p>`:'<p class="home-help">10 задачи според твоите настройки. Избери числата и операциите по-горе.</p>'}<p class="storage-note">${storageAvailable?'Напредъкът и класацията се пазят на това устройство.':'Запазването е недостъпно. Напредъкът остава само до затваряне на страницата.'}</p></div>`;
  card.querySelector('#start-button').addEventListener('click',()=>{if(homeMode==='levels')startSession(null,selectedLevel);else settingsForm.requestSubmit();});
  card.querySelector('#rankings-button').addEventListener('click',renderRankings);
  card.querySelectorAll('[data-level]').forEach(button=>button.addEventListener('click',()=>{const id=Number(button.dataset.level);if(id>unlockedLevel(progress))return;selectedLevel=id;renderWelcome();card.querySelector('[data-level="'+id+'"]').focus();}));
@@ -168,7 +171,7 @@ function renderRankings(){document.body.dataset.screen='rankings';phase='ranking
           fox: [[0,440,740,.13,"triangle"],[.18,660,880,.13,"triangle"],[.4,520,260,.25,"sine"]],
           rabbit: [[0,500,900,.14,"sine"],[.22,600,1100,.14,"sine"],[.46,700,1300,.18,"sine"]],
           turtle: [[0,220,165,.3,"sine"],[.36,196,146,.35,"sine"],[.78,262,330,.25,"sine"]],
-          welcome: [[0,380,180,.18,"sine"],[.2,480,220,.18,"sine"],[.43,900,1600,.12,"sine"],[.59,1200,800,.13,"sine"],[.8,523,523,.13,"sine"],[.96,659,659,.13,"sine"],[1.12,784,784,.15,"sine"],[1.32,260,560,.25,"triangle"],[1.58,784,1046,.15,"sine"]]
+          welcome: [[0,230,150,.17,"triangle"],[.2,260,170,.17,"triangle"],[.44,420,580,.16,"triangle"],[.65,520,340,.17,"triangle"],[.87,650,310,.22,"triangle"],[1.15,260,175,.22,"triangle"]]
         };
         const now = context.currentTime;
         for (const [offset, from, to, duration, type] of calls[animal] || calls.welcome) {
@@ -274,35 +277,25 @@ function renderRankings(){document.body.dataset.screen='rankings';phase='ranking
     return '<div class="confetti" aria-hidden="true">' + Array.from({length: 42}, (_, i) => '<span style="--x:' + ((i * 37) % 101) + '%;--delay:' + ((i * 71) % 600) + 'ms;--drift:' + (((i * 29) % 140) - 70) + 'px;--spin:' + (180 + (i * 53) % 540) + 'deg;--color:' + colors[i % colors.length] + '"></span>').join("") + '</div>';
   }
 
+  function finishResults() {
+    if (phase !== "results") return;
+    const finishedLevel = session.levelId || null;
+    if (finishedLevel) homeMode = "levels";
+    selectedLevel = unlockedLevel(progress);
+    session = null;
+    renderWelcome(true, finishedLevel);
+    if (finishedLevel) card.querySelector('[data-level="' + finishedLevel + '"]')?.scrollIntoView({ block: "nearest", behavior: "auto" });
+  }
+
   function renderResults() {
     phase = "results";
     document.body.dataset.screen = "results";
     stopTimer();
-    const results = getResults(session);
-    const score = getScore(session);
     recordFinishedSession();
-    const title = results.correct === QUESTION_COUNT ? "Уау, всичко е вярно!" : "Браво, справи се!";
-    const message = results.correct === QUESTION_COUNT
-      ? "Десет задачи, десет верни отговора. Имаш повод за голяма усмивка!"
-      : results.correct >= 5
-        ? "Всяка решена задача те прави по-добър. Да опитаме ли още веднъж?"
-        : "Вече направи важната стъпка — опита! С всяка игра ще става по-лесно.";
-    card.innerHTML = `${score.reward.file === "lion" ? confettiMarkup() : ""}<div class="game-top results-top"><span class="game-badge">${icon("check")} ИГРАТА Е ЗАВЪРШЕНА</span><span class="game-meta">${operationLabel(session.settings.operation)} · ${session.settings.min}–${session.settings.max}</span></div>
-      <div class="results-body"><div class="animal-reward"><img src="assets/${score.reward.file}.svg" alt="${score.reward.name}" width="180" height="160"><p class="reward-name">Твоята награда: ${score.reward.name}</p></div><div class="points-total">${score.points}<small> / 100 точки</small></div><h2 id="results-title" tabindex="-1">${title}</h2><p class="results-message">${score.reward.message}</p><p class="score-explanation">Верните отговори носят до 95 точки, а бързината — до 5. Не бързай за сметка на верния отговор!</p>
-        <div class="result-stats"><div class="result-stat"><strong>${results.correct} <small>/ ${QUESTION_COUNT}</small></strong><span>верни отговора</span></div><div class="result-stat"><strong>${timeText(results)}</strong><span>време за решаване</span></div></div>
-        <p class="level-outcome">${session.levelId ? "✓ Ниво " + session.levelId + " е преминато! " + (session.levelId < 20 ? "Следващото ниво е отключено." : "Поздравления! Премина всички 20 нива!") : "Свободна тренировка — браво за усилието!"}</p><div class="result-actions"><button class="primary-button" type="button" id="replay-button">${icon("refresh")} Още една игра</button><button class="secondary-button" type="button" id="change-settings">${icon("sliders")} Към нивата и настройките</button></div>
-        <details class="reward-guide"><summary>Всички животни и точки</summary><div class="reward-categories">${REWARDS.map((reward, i) => `<div><img src="assets/${reward.file}.svg" alt="" width="60" height="54"><strong>${reward.name}</strong><span>${reward.min}–${i === 0 ? 100 : REWARDS[i - 1].min - 1} точки</span></div>`).join("")}</div><p>Бонусът за бързина се дава само за верни отговори: пълен до 5 секунди за задача и постепенно намалява до 0 при 20 секунди. Времето между задачите не влияе.</p></details><details class="results-review"><summary>Виж всички решения</summary><ol class="review-list">${session.answers.map((answer, index) => `<li class="${answer.correct ? "" : "review-incorrect"}"><span class="review-number">${index + 1}.</span><span aria-hidden="true">${answer.correct ? "✓" : "↗"}</span><span class="review-equation">${equationText(answer)}</span><span class="review-answer">${answer.correct ? "Вярно" : `Твоят отговор: ${answer.given}`}</span></li>`).join("")}</ol></details>
-      </div>`;
-    document.querySelector("#replay-button").addEventListener("click", () => startSession(session.settings, session.levelId || null));
-    document.querySelector("#change-settings").addEventListener("click", () => {
-      session = null;
-      selectedLevel = unlockedLevel(progress);
-      renderWelcome(true);
-    });
-    if (session.levelId && session.levelId < 20) {
-      const next = document.createElement("button"); next.type="button"; next.className="primary-button"; next.textContent="Следващо ниво →"; next.addEventListener("click",()=>startSession(null,session.levelId+1)); card.querySelector(".result-actions").prepend(next);
-    }
+    const score = getScore(session);
+    card.innerHTML = `${score.reward.file === "lion" ? confettiMarkup() : ""}<section class="reward-screen" aria-labelledby="results-title"><img class="earned-animal" src="assets/${score.reward.file}.svg" alt="${score.reward.name}" width="240" height="210"><h2 class="earned-points" id="results-title" tabindex="-1">${score.points}<span>точки</span></h2><p class="earned-name">${score.reward.name}</p></section>`;
     document.querySelector("#results-title").focus();
+    resultTimeout = window.setTimeout(() => { resultTimeout = null; finishResults(); }, 2800);
   }
 
   function stopTimer() {
@@ -311,6 +304,8 @@ function renderRankings(){document.body.dataset.screen='rankings';phase='ranking
   }
 
   function startSession(settings, levelId = null) {
+    if (resultTimeout !== null) window.clearTimeout(resultTimeout);
+    resultTimeout = null;
     stopTimer();
     if (feedbackTimeout !== null) window.clearTimeout(feedbackTimeout);
     feedbackTimeout = null;
@@ -358,6 +353,7 @@ function renderRankings(){document.body.dataset.screen='rankings';phase='ranking
   document.querySelector("#mode-levels").addEventListener("click",()=>{homeMode="levels";renderWelcome();});
   document.querySelector("#mode-custom").addEventListener("click",()=>{homeMode="custom";renderWelcome();});
   document.querySelector("#home-button").addEventListener("click",()=>{
+    if (phase === "results") { finishResults(); return; }
     if ((phase==="question" || phase==="feedback") && session?.finishedAt === null && !window.confirm("Да прекратим ли тази игра и да се върнем в началото?")) return;
     recordFinishedSession();
     selectedLevel=unlockedLevel(progress);renderWelcome(true);
