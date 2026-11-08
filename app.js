@@ -540,6 +540,17 @@ function renderRankings(){document.body.dataset.screen='rankings';phase='ranking
   });
   document.querySelector("#new-player").addEventListener("click",()=>openPlayerDialog(null,true));
   document.querySelector("#game-menu").addEventListener("click",event=>{if(event.target.closest("button") && !event.target.closest('[role="switch"]'))document.querySelector("#game-menu").open=false;});
+  document.addEventListener("click", event => {
+    for (const selector of ["#game-menu", "#profile-picker"]) {
+      const menu = document.querySelector(selector);
+      if (menu.open && !menu.contains(event.target)) menu.open = false;
+    }
+  });
+  document.addEventListener("keydown", event => {
+    if (event.key !== "Escape") return;
+    document.querySelector("#game-menu").open = false;
+    document.querySelector("#profile-picker").open = false;
+  });
   document.querySelector("#menu-sound").addEventListener("click",()=>{
     soundEnabled=!soundEnabled;
     if(!soundEnabled)stopJungleSound();

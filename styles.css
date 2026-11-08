@@ -362,3 +362,4 @@ body[data-screen=rankings] .page-heading{display:none}.ranking-list{flex:1;min-h
 #rankings-button img{display:block;width:86px;height:44px;object-fit:contain}
 #rankings-button:hover{background:#eaf2dd}
 .player-header>summary:focus-visible,.user-submenu>summary:focus-visible{outline:3px solid #a8c771;outline-offset:2px}
+.site-header .brand-mark{display:block;object-fit:contain;border-radius:8px;background:transparent;box-shadow:none}
