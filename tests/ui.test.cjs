@@ -14,9 +14,9 @@ function boot(withAudio=false, options={}){
   card.querySelector=key=>get(key);card.querySelectorAll=key=>key==="[data-answer]"?buttons:steps;
   const form=get("#settings-form");form.elements={min:{value:0},max:{value:0},operation:{value:"+"}};form.querySelector=()=>element();
   const document={querySelector:get,body:element(),documentElement:element(),createElement:element};
-  const window={Campaign:{...require("../campaign.js"),createLevelSession(...args){current=require("../campaign.js").createLevelSession(...args);return current;}},confirm:message=>{confirmations.push(message);return options.confirm!==false;},alert:message=>alerts.push(message),MathGame:{...math,submitAnswer(...args){const result=math.submitAnswer(...args);submissions.push(result);current=result;return result;}},setInterval:()=>1,clearInterval(){},setTimeout(fn,delay){const id=++timeoutId;timers.push({id,fn,delay});return id;},clearTimeout(id){const i=timers.findIndex(t=>t.id===id);if(i>=0)timers.splice(i,1);}};
+  const window={Campaign:{...require("../campaign.js"),createLevelSession(...args){if(options.clock)args[2]=options.clock.now;current=require("../campaign.js").createLevelSession(...args);return current;}},confirm:message=>{confirmations.push(message);return options.confirm!==false;},alert:message=>alerts.push(message),MathGame:{...math,submitAnswer(...args){if(options.clock)args[2]=options.clock.now;const result=math.submitAnswer(...args);submissions.push(result);current=result;return result;}},setInterval:()=>1,clearInterval(){},setTimeout(fn,delay){const id=++timeoutId;timers.push({id,fn,delay});return id;},clearTimeout(id){const i=timers.findIndex(t=>t.id===id);if(i>=0)timers.splice(i,1);}};
   if(withAudio)window.AudioContext=class{constructor(){this.state=options.suspended?"suspended":"running";this.currentTime=0;this.destination={};}resume(){this.state="running";return Promise.resolve();}createOscillator(){return {frequency:{setValueAtTime:v=>tones.push(v),exponentialRampToValueAtTime(){}},connect(){},start(){},stop(time){if(time!==undefined)stops.push(time);},disconnect(){}};}createGain(){return {gain:{setValueAtTime(){},linearRampToValueAtTime(){},exponentialRampToValueAtTime(){}},connect(){},disconnect(){}};}};
-  vm.runInNewContext(fs.readFileSync(require.resolve("../app.js"),"utf8"),{window,document,localStorage:{getItem:key=>storage.get(key)||null,setItem:(key,value)=>storage.set(key,value),removeItem:key=>{if(options.failReset)throw Error("Storage denied");storage.delete(key);}},FormData:class{get(key){return {min:0,max:0,operation:"+"}[key];}},console});
+  vm.runInNewContext(fs.readFileSync(require.resolve("../app.js"),"utf8"),{window,document,localStorage:{getItem:key=>storage.get(key)||null,setItem:(key,value)=>storage.set(key,value),removeItem:key=>{if(options.failReset)throw Error("Storage denied");storage.delete(key);}},FormData:class{get(key){return {min:0,max:0,operation:"+"}[key];}},Date:class extends Date{static now(){return options.clock?options.clock.now:Date.now();}},console});
   if(options.home){}
   else if(options.level)get("#start-button").listeners.click();
   else {get("#mode-custom").listeners.click();form.listeners.submit({preventDefault(){}});}
@@ -42,7 +42,7 @@ test("answers flash immediately, reject duplicate clicks, and advance through al
  assert.ok(!ui.card.innerHTML.includes("<details"));
  assert.ok(!ui.card.innerHTML.includes("Виж всички решения"));
  assert.ok(!ui.card.innerHTML.includes('class="confetti"'));
- assert.equal(ui.timers.length,1);assert.equal(ui.timers[0].delay,2800);ui.next();
+ assert.equal(ui.timers.length,1);assert.equal(ui.timers[0].delay,4000);ui.next();
  assert.ok(ui.card.innerHTML.includes('id="start-button"'));assert.equal(ui.timers.length,0);
 });
 test("feedback plays different sounds and the mute control silences subsequent answers",()=>{
@@ -93,9 +93,9 @@ test("home has an accessible podium picture below the play button",()=>{
  assert.match(ui.card.innerHTML,/id="rankings-button" aria-label="Класация"[^>]*><img src="assets\/podium.svg"/);
  assert.ok(ui.card.innerHTML.indexOf('id="start-button"')<ui.card.innerHTML.indexOf('id="rankings-button"'));
 });
-test("the start jingle lasts between one and two seconds and supports a suspended mobile audio context",async()=>{
- const ui=boot(true,{level:true,suspended:true});await Promise.resolve();assert.equal(ui.tones.length,6);
- assert.ok(Math.max(...ui.stops)>=1);assert.ok(Math.max(...ui.stops)<=2);
+test("the start jingle lasts between two and three seconds and supports a suspended mobile audio context",async()=>{
+ const ui=boot(true,{level:true,suspended:true});await Promise.resolve();assert.equal(ui.tones.length,9);
+ assert.ok(Math.max(...ui.stops)>=2);assert.ok(Math.max(...ui.stops)<=3);
  assert.ok(ui.card.innerHTML.includes('Ниво 1'));
 });
 test("each animal button responds with a joke, animation and its own short sound",()=>{
@@ -114,7 +114,7 @@ test("the level animal is animated only on return, without duplicating the ranki
  for(let i=0;i<10;i++){ui.answer(ui.correctAnswer());ui.next();}
  assert.ok(!ui.card.innerHTML.includes('Виж всички решения'));
  assert.ok(!ui.card.innerHTML.includes('class="result-actions"'));
- assert.equal(ui.timers[0].delay,2800);ui.next();
+ assert.equal(ui.timers[0].delay,4000);ui.next();
  assert.match(ui.card.innerHTML,/level-tile reward-arrival level-passed[^>]+data-level="1"/);
  assert.match(ui.card.innerHTML,/class="level-animal" src="assets\/lion.svg"/);
  assert.equal(JSON.parse(ui.storage.get('smetni.rankings.v1')).length,1);
@@ -165,4 +165,25 @@ test("failed storage deletion is explained without preventing a fresh in-memory 
  const ui=boot(false,{level:true,failReset:true});ui.get('#reset-button').listeners.click();
  assert.equal(ui.alerts.length,1);assert.ok(ui.alerts[0].includes('При презареждане'));
  assert.ok(ui.card.innerHTML.includes('0 ПРЕМИНАТИ НИВА'));
+});
+
+
+test("the final screen shows 10/10 answers, 29 seconds and a total of 100",()=>{
+ const clock={now:0};const ui=boot(false,{level:true,clock});
+ for(let i=1;i<=10;i++){clock.now=i*2900;ui.answer(ui.correctAnswer());ui.next();}
+ assert.ok(ui.card.innerHTML.includes('10/10 отговора <strong>— 90 точки</strong>'));
+ assert.ok(ui.card.innerHTML.includes('29 секунди <strong>— 10 точки</strong>'));
+ assert.ok(ui.card.innerHTML.includes('ОБЩО</span>100<span>ТОЧКИ'));
+ assert.equal(ui.timers[0].delay,4000);assert.ok(!ui.card.innerHTML.includes('Виж всички решения'));
+});
+test("lion and non-lion endings play distinct completion sounds",()=>{
+ for(const lion of [true,false]){
+  const ui=boot(true,{level:true});let before=0;
+  for(let i=0;i<10;i++){const answer=lion?ui.correctAnswer():Number(ui.buttons().find(b=>Number(b.dataset.answer)!==ui.correctAnswer()).dataset.answer);ui.answer(answer);before=ui.tones.length;ui.next();}
+  const ending=ui.tones.slice(before);assert.equal(ending.length,lion?6:3);assert.equal(ending[0],lion?523.25:392);
+ }
+});
+test("muting also silences the completion sound",()=>{
+ const ui=boot(true,{level:true});const toggle={setAttribute(){},textContent:''};ui.card.listeners.click({target:{closest:()=>toggle}});const before=ui.tones.length;
+ for(let i=0;i<10;i++){ui.answer(ui.correctAnswer());ui.next();}assert.equal(ui.tones.length,before);
 });

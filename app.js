@@ -171,7 +171,9 @@ function renderRankings(){document.body.dataset.screen='rankings';phase='ranking
           fox: [[0,440,740,.13,"triangle"],[.18,660,880,.13,"triangle"],[.4,520,260,.25,"sine"]],
           rabbit: [[0,500,900,.14,"sine"],[.22,600,1100,.14,"sine"],[.46,700,1300,.18,"sine"]],
           turtle: [[0,220,165,.3,"sine"],[.36,196,146,.35,"sine"],[.78,262,330,.25,"sine"]],
-          welcome: [[0,230,150,.17,"triangle"],[.2,260,170,.17,"triangle"],[.44,420,580,.16,"triangle"],[.65,520,340,.17,"triangle"],[.87,650,310,.22,"triangle"],[1.15,260,175,.22,"triangle"]]
+          welcome: [[0,523.25,523.25,.18,"sine"],[.22,659.25,659.25,.18,"sine"],[.44,783.99,783.99,.22,"sine"],[.7,1046.5,1046.5,.32,"sine"],[1.08,783.99,783.99,.18,"sine"],[1.3,880,880,.18,"sine"],[1.52,783.99,783.99,.18,"sine"],[1.74,659.25,659.25,.2,"sine"],[2,523.25,523.25,.45,"sine"]],
+          success: [[0,523.25,523.25,.16,"triangle"],[.18,659.25,659.25,.16,"triangle"],[.36,783.99,783.99,.16,"triangle"],[.56,1046.5,1046.5,.35,"triangle"],[.98,783.99,783.99,.15,"sine"],[1.18,1046.5,1046.5,.55,"sine"]],
+          finish: [[0,392,392,.23,"sine"],[.28,329.63,329.63,.23,"sine"],[.56,261.63,261.63,.42,"sine"]]
         };
         const now = context.currentTime;
         for (const [offset, from, to, duration, type] of calls[animal] || calls.welcome) {
@@ -293,9 +295,11 @@ function renderRankings(){document.body.dataset.screen='rankings';phase='ranking
     stopTimer();
     recordFinishedSession();
     const score = getScore(session);
-    card.innerHTML = `${score.reward.file === "lion" ? confettiMarkup() : ""}<section class="reward-screen" aria-labelledby="results-title"><img class="earned-animal" src="assets/${score.reward.file}.svg" alt="${score.reward.name}" width="240" height="210"><h2 class="earned-points" id="results-title" tabindex="-1">${score.points}<span>точки</span></h2><p class="earned-name">${score.reward.name}</p></section>`;
+    const results = getResults(session);
+    playJungleSound(score.reward.file === "lion" ? "success" : "finish");
+    card.innerHTML = `${score.reward.file === "lion" ? confettiMarkup() : ""}<section class="reward-screen" aria-labelledby="results-title"><img class="earned-animal" src="assets/${score.reward.file}.svg" alt="${score.reward.name}" width="240" height="210"><p class="earned-name">${score.reward.name}</p><div class="score-breakdown"><p>${results.correct}/${QUESTION_COUNT} отговора <strong>— ${score.accuracy} точки</strong></p><p>${results.elapsedSeconds} секунди <strong>— ${score.speed} точки</strong></p></div><h2 class="earned-points" id="results-title" tabindex="-1"><span class="total-caption">ОБЩО</span>${score.points}<span>ТОЧКИ</span></h2></section>`;
     document.querySelector("#results-title").focus();
-    resultTimeout = window.setTimeout(() => { resultTimeout = null; finishResults(); }, 2800);
+    resultTimeout = window.setTimeout(() => { resultTimeout = null; finishResults(); }, 4000);
   }
 
   function stopTimer() {
